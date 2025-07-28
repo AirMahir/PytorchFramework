@@ -1,7 +1,11 @@
 {
-    "task_type" : "0",
-    "task_name" : "Segmentation",
-    "model_name" : "Unet",
-    "data_dir" : "Data",
-    "output_dir" : "Outputs"
+  "task_type" : "0",
+  "task_name" : "Classification",
+  "model_name" : "resnet50d",
+  "data_dir" : "Data",
+  "output_dir" : "Outputs",
+  "batch_size": 16,
+  "num_workers": 4,
+  "learning_rate": 0.0001,
+  "num_epochs": 10
 }

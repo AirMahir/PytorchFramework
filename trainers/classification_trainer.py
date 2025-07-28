@@ -26,7 +26,6 @@ class ClassificationTrainer(nn.Module):
 
         train_loss = 0
         train_correct_predictions = 0
-        total_train_samples = 0
 
         for images, targets in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train"):
             
@@ -44,10 +43,9 @@ class ClassificationTrainer(nn.Module):
 
             target_pred_class = torch.argmax(targets_pred, dim = 1)
             train_correct_predictions += (target_pred_class == targets).sum().item()
-            total_train_samples += targets.size(0)
 
-        avg_train_loss = train_loss / total_train_samples
-        avg_train_acc = train_correct_predictions / total_train_samples
+        avg_train_loss = train_loss /  len(self.train_loader)
+        avg_train_acc = train_correct_predictions /  len(self.train_loader)
 
         return avg_train_acc, avg_train_loss
 
@@ -57,7 +55,6 @@ class ClassificationTrainer(nn.Module):
 
         val_loss = 0
         val_correct_predictions = 0
-        total_val_samples = 0
 
         with torch.no_grad():
 
@@ -73,12 +70,11 @@ class ClassificationTrainer(nn.Module):
                 val_loss += loss.item()
                 
                 # Calculate and accumulate accuracy
-                test_pred_labels = test_preds.argmax(test_preds, dim=1)
+                test_pred_labels = torch.argmax(test_preds, dim=1)
                 val_correct_predictions += (test_pred_labels == targets).sum().item()
-                total_val_samples += targets.size(0)
             
-        avg_val_loss = val_loss / total_val_samples
-        avg_val_acc = val_correct_predictions / total_val_samples
+        avg_val_loss = val_loss /  len(self.val_loader)
+        avg_val_acc = val_correct_predictions /  len(self.val_loader)
 
         return avg_val_acc, avg_val_loss
     
@@ -94,8 +90,8 @@ class ClassificationTrainer(nn.Module):
 
         for epoch in tqdm(range(num_epochs)):
 
-            if(epoch % self.config['number_val']):
-                val_acc, val_loss = self._val_one_epoch(self, epoch)
+            if(epoch % 5 == 0):
+                val_acc, val_loss = self._val_one_epoch(epoch)
                 print(
                     f"Epoch: {epoch+1} | "
                     f"val_loss: {val_loss:.4f} | "
@@ -104,7 +100,7 @@ class ClassificationTrainer(nn.Module):
 
             else:
 
-                train_acc, train_loss = self._train_one_epoch(self, epoch)
+                train_acc, train_loss = self._train_one_epoch(epoch)
 
                 print(
                     f"Epoch: {epoch+1} | "

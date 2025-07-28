@@ -67,6 +67,7 @@ def main():
             in_channels=3,
             classes=3
         )
+        model.to(device)
 
         criterion = nn.CrossEntropyLoss()
 
