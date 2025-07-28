@@ -1,0 +1,7 @@
+{
+    "task_type" : "0",
+    "task_name" : "Segmentation",
+    "model_name" : "Unet",
+    "data_dir" : "Data",
+    "output_dir" : "Outputs"
+}
