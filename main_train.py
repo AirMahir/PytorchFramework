@@ -20,7 +20,10 @@ def main():
     args = parser.parse_args()
 
     configs = read_config(args.config_path)
+    get_seed(configs.get('seed', 42))
     device = get_device()
+
+    print(f"Using device: {device}")
 
     data_dir = configs['data_dir']
     generate_dirs()
@@ -29,15 +32,16 @@ def main():
 
         train_transforms, test_transforms =  get_classification_transforms()
 
-        train_data = ClassificationData(os.path.join(data_dir, "classificationData\train"), transform=train_transforms)
-        test_data = ClassificationData(os.path.join(data_dir, "classificationData\test"), transform=test_transforms)
+        train_data = ClassificationData(os.path.join(data_dir, "classificationData", "train"), transform=train_transforms)
+        test_data = ClassificationData(os.path.join(data_dir, "classificationData", "test"), transform=test_transforms)
 
         train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True)
         test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
 
         model = timm.create_model('resnet50d', pretrained=True, num_classes=3)
+        model.to(device)
 
-        criterion = nn.Softmax()
+        criterion = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
