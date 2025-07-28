@@ -1,6 +1,7 @@
 import torch
 import pathlib
 from PIL import Image
+import numpy as np
 from typing import Dict, Tuple, List
 from torch.utils.data import DataLoader, Dataset
 from utils.helpers import find_classes
@@ -26,8 +27,9 @@ class ClassificationData(Dataset):
         class_idx = self.class_to_idx[class_name]
 
         if self.transform:
-            return self.transform(img), class_idx # return data, label (X, y)
+            transformed = self.transform(image=np.array(img))  # return data, label (X, y)
+            return transformed["image"], class_idx 
         else:
-            return img, class_idx # return data, label (X, y)
+            return img, class_idx  # return data, label (X, y)
 
         

@@ -8,33 +8,39 @@ import segmentation_models_pytorch as smp
 
 from torch.utils.data import DataLoader, Dataset
 from datasets.classification_dataset import ClassificationData
-from datasets.segmentation_dataset import SimpleOxfordPetDataset
-from utils.transforms import get_classification_transforms, get_segmentation_transforms
-from utils.helpers import read_config, get_seed, get_device, generate_dirs, save_metrics
+from datasets.segmentation_dataset import SegmentationData
+from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
+from utils.helpers import read_config, get_device, generate_dirs
 from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 
-
+def setup_logger(log_file):
+    logging.basicConfig(
+        filename = log_file,
+        encoding = "utf-8",
+        level = logging.INFO,
+        format = '%'
+    )
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
     parser.add_argument("--config_path", type=str, required=True, help="Path of the config file")
     args = parser.parse_args()
 
     configs = read_config(args.config_path)
-    get_seed(configs.get('seed', 42))
+    # get_seed(configs.get('seed', 42))
     device = get_device()
 
     print(f"Using device: {device}")
 
     data_dir = configs['data_dir']
-    generate_dirs()
+    generate_dirs(configs)
 
     if(configs['task_type'] == '0'):
 
-        train_transforms, test_transforms =  get_classification_transforms()
+        print("begin training")
 
-        train_data = ClassificationData(os.path.join(data_dir, "classificationData", "train"), transform=train_transforms)
-        test_data = ClassificationData(os.path.join(data_dir, "classificationData", "test"), transform=test_transforms)
+        train_data = ClassificationData(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification)
+        test_data = ClassificationData(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification)
 
         train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True)
         test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
@@ -52,11 +58,11 @@ def main():
 
         print(results)
 
-        save_metrics(results)
+        # save_metrics(results)
 
     else:
-        train_dataset = SimpleOxfordPetDataset(os.path.join(data_dir, "segmentationData"), "train")
-        test_dataset = SimpleOxfordPetDataset(os.path.join(data_dir, "segmentationData"), "test")
+        train_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "train"), transform = train_transform_segmentation)
+        test_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "test"), transform = val_transform_segmentation)
 
         train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True)
         test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
@@ -78,6 +84,8 @@ def main():
 
         results = trainer.train()
         print(results)
-        save_metrics(results)
+        # save_metrics(results)
 
 
+if __name__ == "__main__":
+    main()

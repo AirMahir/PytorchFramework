@@ -90,7 +90,12 @@ class ClassificationTrainer(nn.Module):
 
         for epoch in tqdm(range(num_epochs)):
 
-            if(epoch % 5 == 0):
+            train_acc = 0
+            train_loss = 0
+            val_acc = 0
+            val_loss = 0
+
+            if(epoch != 0 & epoch % 2 == 0):
                 val_acc, val_loss = self._val_one_epoch(epoch)
                 print(
                     f"Epoch: {epoch+1} | "
