@@ -1,5 +1,23 @@
 import os
+import json
+import torch
 from typing import Tuple, List, Dict
+
+def read_config(config_file_path: str):
+    try:
+        with open(config_file_path, 'r') as json_file:
+            data = json.load(json_file)
+        return data
+    except:
+        return FileNotFoundError("The config file is corrupted/absent")
+
+def get_device():
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    return device
+
+def generate_dirs(configs:dict) -> None:
+    os.makedirs(configs["output_dir"], exist_ok=True)
+
 
 def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     # 1. Get the class names by scanning the target directory
