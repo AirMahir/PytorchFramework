@@ -18,22 +18,20 @@ val_transforms_classification = A.Compose([
 ])
 
 
-TARGET_SIZE = (1444, 1444)
+TARGET_SIZE = (512, 512) 
 
 train_transform_segmentation = A.Compose([
-    A.SmallestMaxSize(max_size=TARGET_SIZE[0] * 2, p=1.0),
-    A.RandomCrop(height=TARGET_SIZE[0], width=TARGET_SIZE[1], p=1.0),
-    A.SquareSymmetry(p=1.0),
+    A.Resize(height=TARGET_SIZE[0], width=TARGET_SIZE[1]),
     A.RandomBrightnessContrast(p=0.3),
-    A.GaussNoise(std_range=(0.1, 0.2), p=0.2),
-    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
+    A.Normalize(mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225)),
     A.ToTensorV2(),
-])
+], additional_targets={'mask': 'mask'})
 
 val_transform_segmentation = A.Compose([
-    A.SmallestMaxSize(max_size=TARGET_SIZE[0] * 2, p=1.0),
-    A.CenterCrop(height=TARGET_SIZE[0] * 2, width=TARGET_SIZE[1] * 2, p=1.0),
-    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    A.Resize(height=TARGET_SIZE[0], width=TARGET_SIZE[1]),
+    A.Normalize(mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225)),
     A.ToTensorV2(),
-])
-
+], additional_targets={'mask': 'mask'})

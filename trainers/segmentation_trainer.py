@@ -5,7 +5,7 @@ from tqdm.auto import tqdm
 
 class SegmentationTrainer(nn.Module):
 
-    def __init__(self, model, train_loader, val_loader, optimizer, criterion, device, config, logger=None):
+    def __init__(self, model, train_loader, val_loader, optimizer, criterion, scheduler, device, config, logger=None):
         super().__init__()
 
         self.model = model
@@ -17,14 +17,7 @@ class SegmentationTrainer(nn.Module):
         self.config = config
         self.logger = logger
 
-        self.scheduler = None
-        if "use_scheduler" in config and config["use_scheduler"]:
-            self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
-                self.optimizer,
-                max_lr=config["learning_rate"],
-                steps_per_epoch=len(train_loader),
-                epochs=config["num_epochs"]
-            )
+        self.scheduler = scheduler
 
     def _train_one_epoch(self, epoch):
         self.model.train()
@@ -34,9 +27,12 @@ class SegmentationTrainer(nn.Module):
         total_pixels = 0
 
         for images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
-            images, masks = images.to(self.device), masks.to(self.device)
+            images, masks = images.to(self.device), masks.unsqueeze(1).to(self.device)
 
             preds = self.model(images)
+            print(preds.shape)
+            print(masks.shape)
+
             loss = self.criterion(preds, masks)
             total_loss += loss.item()
 

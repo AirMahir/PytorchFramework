@@ -1,6 +1,9 @@
 import torch
+import logging
 import torch.nn as nn
 from tqdm.auto import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 class ClassificationTrainer(nn.Module):
@@ -28,6 +31,8 @@ class ClassificationTrainer(nn.Module):
         train_correct_predictions = 0
 
         for images, targets in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train"):
+
+            # logger.debug("The shape here is : ", images.shape)
             
             images, targets = images.to(self.device), targets.to(self.device)
             targets_pred = self.model(images)
@@ -90,34 +95,23 @@ class ClassificationTrainer(nn.Module):
 
         for epoch in tqdm(range(num_epochs)):
 
-            train_acc = 0
-            train_loss = 0
-            val_acc = 0
-            val_loss = 0
+            train_acc, train_loss = self._train_one_epoch(epoch)
+            val_acc, val_loss = self._val_one_epoch(epoch)
 
-            if(epoch != 0 & epoch % 2 == 0):
-                val_acc, val_loss = self._val_one_epoch(epoch)
-                print(
-                    f"Epoch: {epoch+1} | "
-                    f"val_loss: {val_loss:.4f} | "
-                    f"val_acc: {val_acc:.4f}"
-                )
+            print(
+                f"Epoch: {epoch+1} | "
+                f"train_loss: {train_loss:.4f} | "
+                f"train_acc: {train_acc:.4f} | "
+                f"val_loss: {val_loss:.4f} | "
+                f"val_acc: {val_acc:.4f}"
+            )
 
-            else:
-
-                train_acc, train_loss = self._train_one_epoch(epoch)
-
-                print(
-                    f"Epoch: {epoch+1} | "
-                    f"train_loss: {train_loss:.4f} | "
-                    f"train_acc: {train_acc:.4f}"
-                )
-
+            # 5. Update results dictionary
+            # Ensure all data is moved to CPU and converted to float for storage
             results["train_loss"].append(train_loss.item() if isinstance(train_loss, torch.Tensor) else train_loss)
             results["train_acc"].append(train_acc.item() if isinstance(train_acc, torch.Tensor) else train_acc)
             results["val_loss"].append(val_loss.item() if isinstance(val_loss, torch.Tensor) else val_loss)
             results["val_acc"].append(val_acc.item() if isinstance(val_acc, torch.Tensor) else val_acc)
-
 
         return results
 

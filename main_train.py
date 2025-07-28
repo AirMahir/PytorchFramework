@@ -2,7 +2,8 @@ import os
 import argparse
 import torch
 import torch.nn as nn
-import numpy as np
+import logging
+import random
 import timm
 import segmentation_models_pytorch as smp
 
@@ -19,8 +20,12 @@ def setup_logger(log_file):
         filename = log_file,
         encoding = "utf-8",
         level = logging.INFO,
-        format = '%'
+        format = '%(levelname)s - %(message)s'
     )
+
+    return logging.getLogger()
+
+
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
     parser.add_argument("--config_path", type=str, required=True, help="Path of the config file")
@@ -30,19 +35,22 @@ def main():
     # get_seed(configs.get('seed', 42))
     device = get_device()
 
-    print(f"Using device: {device}")
+    logger = setup_logger(os.path.join(configs["output_dir"], 'log.txt'))
+    logger.info("Starting main processing")
+
+    logger.info(f"Using device: {device}")
 
     data_dir = configs['data_dir']
     generate_dirs(configs)
 
     if(configs['task_type'] == '0'):
 
-        print("begin training")
+        logger.info("Classification training....")
 
         train_data = ClassificationData(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification)
         test_data = ClassificationData(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification)
 
-        train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True)
+        train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True)
         test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
 
         model = timm.create_model('resnet50d', pretrained=True, num_classes=3)
@@ -56,7 +64,7 @@ def main():
 
         results = trainer.train()
 
-        print(results)
+        logger.info(results)
 
         # save_metrics(results)
 
@@ -64,26 +72,37 @@ def main():
         train_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "train"), transform = train_transform_segmentation)
         test_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "test"), transform = val_transform_segmentation)
 
-        train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True)
+        train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True)
         test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
 
         model = smp.Unet(
             encoder_name="resnet34",
             encoder_weights="imagenet",
             in_channels=3,
-            classes=3
+            classes=1
         )
         model.to(device)
 
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.BCEWithLogitsLoss()
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=configs['learning_rate'])
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=1e-2, steps_per_epoch=len(train_dataloader))
+        steps_per_epoch = len(train_dataloader)
+        epochs = configs["num_epochs"]
 
-        trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, device, configs, logger=None)
+        if steps_per_epoch == 0 or epochs == 0:
+            raise ValueError("Invalid scheduler configuration: steps_per_epoch or epochs is 0.")
+
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=configs["learning_rate"],
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch
+        )
+
+        trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, scheduler, device, configs, logger=None)
 
         results = trainer.train()
-        print(results)
+        logger.info(results)
         # save_metrics(results)
 
 

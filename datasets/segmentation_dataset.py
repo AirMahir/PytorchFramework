@@ -24,8 +24,12 @@ class SegmentationData(Dataset):
         image = Image.open(img_path)
         mask = Image.open(mask_path)
 
+        print("shape of mask :", np.asarray(mask).shape)
+
         if self.transform:
             augmented = self.transform(image = np.array(image), mask = np.array(mask))
+            print("Size of image: ", augmented["image"])
+            print("size of mask: ", augmented["mask"].shape)
             return augmented["image"], augmented["mask"]
         else:
             return image, mask

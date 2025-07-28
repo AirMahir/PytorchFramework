@@ -1,10 +1,13 @@
 import torch
 import pathlib
+import logging
 from PIL import Image
 import numpy as np
 from typing import Dict, Tuple, List
 from torch.utils.data import DataLoader, Dataset
 from utils.helpers import find_classes
+
+logger = logging.getLogger(__name__)
 
 class ClassificationData(Dataset):
 
@@ -13,6 +16,9 @@ class ClassificationData(Dataset):
         self.paths = list(pathlib.Path(image_dir).glob("*/*.jpg"))
         self.transform = transform
         self.classes, self.class_to_idx = find_classes(image_dir)
+
+        print(f"Loaded {len(self.paths)} images from {image_dir}")
+
 
     def load_image(self, index: int) -> Image.Image:
         image_path = self.paths[index]

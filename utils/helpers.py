@@ -30,3 +30,13 @@ def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     # 3. Create a dictionary of index labels (computers prefer numerical rather than string labels)
     class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
     return classes, class_to_idx
+
+
+def set_random_seed(seed, deterministic=False):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = deterministic
+
+
