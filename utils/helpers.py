@@ -1,0 +1,14 @@
+import os
+from typing import Tuple, List, Dict
+
+def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
+    # 1. Get the class names by scanning the target directory
+    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+    
+    # 2. Raise an error if class names not found
+    if not classes:
+        raise FileNotFoundError(f"Couldn't find any classes in {directory}.")
+        
+    # 3. Create a dictionary of index labels (computers prefer numerical rather than string labels)
+    class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+    return classes, class_to_idx
