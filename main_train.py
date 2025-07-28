@@ -63,9 +63,7 @@ def main():
         trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, device, configs, logger=None)
 
         results = trainer.train()
-
         logger.info(results)
-
         # save_metrics(results)
 
     else:
@@ -79,10 +77,11 @@ def main():
             encoder_name="resnet34",
             encoder_weights="imagenet",
             in_channels=3,
-            classes=1
+            classes=3
         )
         model.to(device)
 
+        # Expects (B, 1, H, W )
         criterion = nn.BCEWithLogitsLoss()
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=configs['learning_rate'])
@@ -99,7 +98,7 @@ def main():
             steps_per_epoch=steps_per_epoch
         )
 
-        trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, scheduler, device, configs, logger=None)
+        trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, scheduler, device, configs, logger=logger)
 
         results = trainer.train()
         logger.info(results)

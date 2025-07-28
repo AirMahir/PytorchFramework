@@ -5,7 +5,6 @@ from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
-
 class ClassificationTrainer(nn.Module):
 
     def __init__(self, model, train_loader, val_loader, optimizer, criterion, device, config, logger=None):

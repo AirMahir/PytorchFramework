@@ -1,9 +1,10 @@
 {
   "task_type" : "1",
-  "task_name" : "Classification",
+  "task_name" : "Segmentation",
   "model_name" : "resnet50d",
-  "data_dir" : "Data",
+  "data_dir" : "Data/segmentationDataset/",
   "output_dir" : "Outputs",
+  "num_channels" : 3,
   "batch_size": 4,
   "num_workers": 4,
   "learning_rate": 0.00001,

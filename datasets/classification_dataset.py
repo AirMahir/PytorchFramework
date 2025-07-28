@@ -19,7 +19,9 @@ class ClassificationData(Dataset):
 
         print(f"Loaded {len(self.paths)} images from {image_dir}")
 
-
+    def __repr__(self):
+        return f"ClassificationData(num_samples={len(self)}, image_dir={self.image_dir})"
+    
     def load_image(self, index: int) -> Image.Image:
         image_path = self.paths[index]
         return Image.open(image_path) 

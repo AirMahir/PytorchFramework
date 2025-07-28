@@ -1,9 +1,12 @@
 import os
 import torch
 import numpy as np
+import logging
 from PIL import Image
 from typing import Dict, Tuple, List
 from torch.utils.data import Dataset
+
+logger = logging.getLogger(__name__)
 
 class SegmentationData(Dataset):
 
@@ -17,20 +20,27 @@ class SegmentationData(Dataset):
     def __len__(self) -> int:
         return len(self.image_lists)
     
+    def __repr__(self):
+        return f"SegmentationData(num_samples={len(self)}, image_dir={self.image_dir})"
+    
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
         img_path = os.path.join(self.image_dir, self.image_lists[index])
         mask_path = os.path.join(self.mask_dir, self.image_lists[index])
 
         image = Image.open(img_path)
-        mask = Image.open(mask_path)
-
-        print("shape of mask :", np.asarray(mask).shape)
+        mask = Image.open(mask_path).convert("L")
+        
+        logger.debug("shape of mask :", np.asarray(mask).shape)
 
         if self.transform:
-            augmented = self.transform(image = np.array(image), mask = np.array(mask))
-            print("Size of image: ", augmented["image"])
-            print("size of mask: ", augmented["mask"].shape)
-            return augmented["image"], augmented["mask"]
+            augmented = self.transform(image = np.array(image), mask = np.array(mask).astype(np.float32))
+            logger.debug(f"Size of image: {augmented['image'].shape}")
+            logger.debug(f"Size of mask: {augmented['mask'].shape}")
+
+            # Albumentations returns masks as np.uint8
+            # return augmented["image"], augmented["mask"]
+            return torch.tensor(augmented["image"]).float(), torch.tensor(augmented["mask"]).float().unsqueeze(0)
+
         else:
             return image, mask
 
