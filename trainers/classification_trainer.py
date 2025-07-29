@@ -36,7 +36,6 @@ class ClassificationTrainer(nn.Module):
         for images, targets in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train"):
 
             # logger.debug("The shape here is : ", images.shape)
-            
             images, targets = images.to(self.device), targets.to(self.device).long()
             targets_pred = self.model(images)
 

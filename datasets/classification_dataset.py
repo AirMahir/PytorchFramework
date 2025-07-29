@@ -35,7 +35,6 @@ class ClassificationData(Dataset):
         class_idx = self.class_to_idx[class_name]
 
         # print(f"Shape for image : {img.size}")
-
         if self.transform:
             transformed = self.transform(image=np.array(img))  # return data, label (X, y)
             # print(f"Shape for class_idx : {class_idx}")
