@@ -1,6 +1,8 @@
 import os
 import json
 import torch
+import random
+import numpy as np
 from typing import Tuple, List, Dict
 
 def read_config(config_file_path: str):
@@ -32,11 +34,13 @@ def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     return classes, class_to_idx
 
 
-def set_random_seed(seed, deterministic=False):
+def seed_everything(seed: int = 42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = deterministic
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 
 

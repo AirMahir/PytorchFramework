@@ -42,3 +42,22 @@ class ClassificationData(Dataset):
             return transformed["image"], class_idx 
         else:
             return img, class_idx  # return data, label (X, y)
+
+
+class ClassificationInferenceDataset(Dataset):
+    def __init__(self, image_dir, transform=None):
+        self.image_dir = image_dir
+        self.paths = list(pathlib.Path(image_dir).glob("*.jpg")) 
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, idx):
+        img_path = self.paths[idx]
+        image = Image.open(img_path).convert("RGB")
+
+        if self.transform:
+            image = self.transform(image=np.array(image))["image"]
+
+        return image, str(img_path.name)

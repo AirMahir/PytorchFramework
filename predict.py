@@ -7,6 +7,11 @@ import timm
 import segmentation_models_pytorch as smp
 
 from PIL import Image
+from tqdm.auto import tqdm
+from torch.utils.data import DataLoader
+from datasets.classification_dataset import ClassificationInferenceDataset
+from datasets.segmentation_dataset import SegmentationData
+from utils.visualize import display_classification_batch, display_classification_prediction
 from utils.transforms import val_transforms_classification, val_transform_segmentation
 from utils.helpers import read_config, get_device, generate_dirs
 
@@ -30,7 +35,7 @@ def setup_logger(log_file):
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
     parser.add_argument("--config_path", type=str, required=True, help="Path of the config file")
-    parser.add_argument("--img_path", type = str, help = "path to test data")
+    parser.add_argument("--img_dir", type = str, help = "path to test data")
     parser.add_argument("--checkpoint_path", type = str, help = "Path to the checkpoint model - state dict")
     args = parser.parse_args()
 
@@ -55,17 +60,29 @@ def main():
         model.load_state_dict(checkpoint['model'].state_dict())  # Using .state_dict() from saved model
         model.eval()
 
-        img = Image.open(args.img_path).convert("RGB")
-        input_tensor = val_transforms_classification(image=np.array(img))['image']  
-        input_tensor = input_tensor.unsqueeze(0).to(device)  # Add batch dim and send to device
+        test_data = ClassificationInferenceDataset(args.img_dir, transform=val_transforms_classification)
+        test_dataloader = DataLoader(test_data, batch_size=configs['batch_size'], num_workers=configs['num_workers'], shuffle=False)
+
+        os.makedirs(configs["output_dir"], exist_ok=True)
+        all_predictions = []
 
         with torch.no_grad():
-            output = model(input_tensor)
-            probabilities = torch.softmax(output, dim=1)
-            pred_class = torch.argmax(probabilities, dim=1).item()
-        
-        logger.info(f"Prediction logits: {output}")
-        print(f"The predicted class index is: {pred_class}")
+            for batch_idx, (images, filenames) in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset", leave=False)):
+                images = images.to(device)
+
+                preds = model(images)
+                pred_probs = torch.softmax(preds, dim=1)
+                pred_classes = torch.argmax(pred_probs, dim=1)
+
+                display_classification_batch(images, preds, configs)
+
+                for fname, pred in zip(filenames, preds.cpu().tolist()):
+                    all_predictions.append((fname, pred))
+                        
+            for fname, pred in all_predictions:
+                print(f"{fname} => class {pred}")
+
+            return all_predictions
 
     else:
         logger.info("Segmentation evaluation....")

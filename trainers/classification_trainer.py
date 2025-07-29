@@ -22,7 +22,6 @@ class ClassificationTrainer(nn.Module):
         self.scheduler = scheduler
         self.device = device
         self.config = config
-        self.device = device
         self.logger = logger
 
     
