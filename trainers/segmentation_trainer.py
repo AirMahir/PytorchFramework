@@ -1,7 +1,9 @@
+import os
 import torch
 import torch.nn as nn
 from tqdm.auto import tqdm
-from ..utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
+from utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
+from utils.visualize import display_segmentation_batch, display_segmentation_prediction, plot_metric_curves
 
 class SegmentationTrainer:
 
@@ -18,7 +20,7 @@ class SegmentationTrainer:
 
         self.scheduler = scheduler
 
-    def _train_one_epoch(self, epoch, num_channels):
+    def _train_one_epoch(self, epoch, num_classes):
         self.model.train()
 
         total_loss = 0
@@ -28,10 +30,11 @@ class SegmentationTrainer:
 
         for images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
             images, masks = images.to(self.device), masks.to(self.device)
+            masks = masks.long()
 
             preds = self.model(images)
-            self.logger.debug(f"During training : preds shape = {preds.shape}")
-            self.logger.debug(f"During trainig : masks shape = {masks.shape}")
+            # self.logger.debug(f"During training : preds shape = {preds.shape}")
+            # self.logger.debug(f"During trainig : masks shape = {masks.shape}")
 
             loss = self.criterion(preds, masks)
             total_loss += loss.item()
@@ -44,12 +47,17 @@ class SegmentationTrainer:
                 self.scheduler.step()
 
             accuracy.append(calculate_accuracy(preds, masks))
-            iou_score.append(calculate_iou_score(preds, masks, num_classes = num_channels))
-            dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes = num_channels))
+            iou_score.append(calculate_iou_score(preds, masks, num_classes = num_classes))
+            dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes = num_classes))
 
-        return total_loss / len(self.train_loader), accuracy.mean().item(), iou_score.mean().item(), dice_coeff.mean().item()
+        return (
+            total_loss / len(self.train_loader),
+            torch.tensor(accuracy).mean().item(),
+            torch.tensor(iou_score).mean().item(),
+            torch.tensor(dice_coeff).mean().item()
+        )
 
-    def _val_one_epoch(self, epoch, num_channels):
+    def _val_one_epoch(self, epoch, num_classes):
         self.model.eval()
 
         total_loss = 0
@@ -60,34 +68,47 @@ class SegmentationTrainer:
         with torch.no_grad():
 
             for images, masks in tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False):
-                images, masks = images.to(self.device), masks.to(self.device)
 
+                display_segmentation_batch(images, masks, self.config)
+
+                images, masks = images.to(self.device), masks.to(self.device)
+                masks = masks.long()
                 preds = self.model(images)
+
                 loss = self.criterion(preds, masks)
                 total_loss += loss.item()
 
                 accuracy.append(calculate_accuracy(preds, masks))
-                iou_score.append(calculate_iou_score(preds, masks, num_channels))
-                dice_coeff.append(calculate_dice_coefficient(preds, masks, num_channels))
+                iou_score.append(calculate_iou_score(preds, masks, num_classes))
+                dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes))
 
-        return total_loss / len(self.val_loader), accuracy.mean().item(), iou_score.mean().item(), dice_coeff.mean().item()
+            return (
+            total_loss / len(self.val_loader),
+            torch.tensor(accuracy).mean().item(),
+            torch.tensor(iou_score).mean().item(),
+            torch.tensor(dice_coeff).mean().item()
+        )
 
     def train(self):
         num_epochs = self.config["num_epochs"]
         results = {
             "train_loss": [],
             "train_acc": [],
+            "train_iou": [],
+            "train_dice": [],
             "val_loss": [],
-            "val_acc": []
+            "val_acc": [],
+            "val_iou": [],
+            "val_dice": []
         }
 
-        num_channels = self.config["num_channels"]
+        num_classes = self.config["num_classes"]
         
         best_acc = 0
 
         for epoch in tqdm(range(num_epochs), desc="Training Progress"):
-            train_loss, train_acc, train_iou, train_dice = self._train_one_epoch(epoch, num_channels)
-            val_loss, val_acc, val_iou, val_dice = self._val_one_epoch(epoch, num_channels)
+            train_loss, train_acc, train_iou, train_dice = self._train_one_epoch(epoch, num_classes)
+            val_loss, val_acc, val_iou, val_dice = self._val_one_epoch(epoch, num_classes)
 
             print(
                 f"Epoch {epoch+1}: "
@@ -97,7 +118,8 @@ class SegmentationTrainer:
 
             if(val_acc > best_acc):
                 best_acc = val_acc
-                torch.save(self.model.state_dict(), self.config["output_dir"])
+                model_path = os.path.join(self.config["output_dir"],  f"best_model_epoch{epoch+1}_acc{val_acc:.4f}.pth")
+                torch.save(self.model.state_dict(), model_path)
 
             results["train_loss"].append(train_loss)
             results["train_acc"].append(train_acc)
@@ -108,4 +130,5 @@ class SegmentationTrainer:
             results["val_iou"].append(val_iou)
             results["val_dice"].append(val_dice)
 
+        plot_metric_curves(results, self.config)
         return results

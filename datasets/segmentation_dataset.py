@@ -12,7 +12,9 @@ class SegmentationData(Dataset):
 
     def __init__(self, data_dir:str, transform = None) -> None:
 
+
         self.image_dir = os.path.join(data_dir, "Tiles")
+        # print(f"The image_dir {self.image_dir}")
         self.mask_dir = os.path.join(data_dir, "Mask")
         self.image_lists = os.listdir(self.image_dir)
         self.transform = transform
@@ -30,7 +32,7 @@ class SegmentationData(Dataset):
         image = Image.open(img_path)
         mask = Image.open(mask_path).convert("L")
         
-        logger.debug("shape of mask :", np.asarray(mask).shape)
+        # logger.debug("shape of mask :", np.asarray(mask).shape)
 
         if self.transform:
             augmented = self.transform(image = np.array(image), mask = np.array(mask).astype(np.float32))
@@ -39,7 +41,7 @@ class SegmentationData(Dataset):
 
             # Albumentations returns masks as np.uint8
             # return augmented["image"], augmented["mask"]
-            return torch.tensor(augmented["image"]).float(), torch.tensor(augmented["mask"]).float().unsqueeze(0)
+            return augmented["image"].float(), augmented["mask"].float() // 51
 
         else:
             return image, mask

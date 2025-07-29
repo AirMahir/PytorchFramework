@@ -1,0 +1,4 @@
+INFO - Starting main processing
+INFO - Using device: cuda
+INFO - Starting main processing
+INFO - Using device: cuda

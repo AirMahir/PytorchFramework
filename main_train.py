@@ -15,11 +15,13 @@ from utils.helpers import read_config, get_device, generate_dirs
 from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 def setup_logger(log_file):
     logging.basicConfig(
         filename = log_file,
         encoding = "utf-8",
-        level = logging.INFO,
+        level=logging.DEBUG,
         format = '%(levelname)s - %(message)s'
     )
 
@@ -29,6 +31,7 @@ def setup_logger(log_file):
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
     parser.add_argument("--config_path", type=str, required=True, help="Path of the config file")
+    parser.add_argument("--checkpoint", type = str, help = "Path to the checkpoint model - state dict")
     args = parser.parse_args()
 
     configs = read_config(args.config_path)
@@ -82,7 +85,7 @@ def main():
         model.to(device)
 
         # Expects (B, 1, H, W )
-        criterion = nn.BCEWithLogitsLoss()
+        criterion = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=configs['learning_rate'])
         steps_per_epoch = len(train_dataloader)
