@@ -4,6 +4,7 @@ import torch.nn as nn
 from tqdm.auto import tqdm
 from utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
 from utils.visualize import display_segmentation_batch, display_segmentation_prediction, plot_metric_curves
+from torch.cuda.amp import autocast, GradScaler 
 
 class SegmentationTrainer:
 
@@ -19,6 +20,7 @@ class SegmentationTrainer:
         self.logger = logger
 
         self.scheduler = scheduler
+        self.scaler = GradScaler() 
 
     def _train_one_epoch(self, epoch, num_classes):
         self.model.train()
@@ -28,27 +30,32 @@ class SegmentationTrainer:
         iou_score = []
         dice_coeff = []
 
-        for  images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
+        for images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
             images, masks = images.to(self.device), masks.to(self.device)
             masks = masks.long()
 
-            preds = self.model(images)
-            # self.logger.debug(f"During training : preds shape = {preds.shape}")
-            # self.logger.debug(f"During trainig : masks shape = {masks.shape}")
-
-            loss = self.criterion(preds, masks)
+            # Autocast for automatic mixed precision
+            with autocast():
+                preds = self.model(images)
+                loss = self.criterion(preds, masks)
+            
             total_loss += loss.item()
 
             self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            
+            # Scale the loss and call backward()
+            self.scaler.scale(loss).backward()
+            
+            # Unscale gradients and update optimizer
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             if self.scheduler:
                 self.scheduler.step()
 
             accuracy.append(calculate_accuracy(preds, masks))
-            iou_score.append(calculate_iou_score(preds, masks, num_classes = num_classes))
-            dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes = num_classes))
+            iou_score.append(calculate_iou_score(preds, masks, num_classes=num_classes))
+            dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes=num_classes))
 
         return (
             total_loss / len(self.train_loader),
@@ -66,7 +73,6 @@ class SegmentationTrainer:
         dice_coeff = []
 
         with torch.no_grad():
-
             for i, (images, masks) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
                 if i == 0:
@@ -74,7 +80,10 @@ class SegmentationTrainer:
 
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
-                preds = self.model(images)
+                
+                # No GradScaler needed in validation as there's no backward pass
+                with autocast():
+                    preds = self.model(images)
 
                 if(epoch % 5 == 0):
                     display_segmentation_prediction(images, masks, preds, epoch, self.config)
@@ -122,15 +131,16 @@ class SegmentationTrainer:
 
             if(val_acc > best_acc):
                 best_acc = val_acc
-                model_path = os.path.join(self.config["output_dir"],  f"best_checkpoint.pth")
+                model_path = os.path.join(self.config["output_dir"], f"best_checkpoint.pth")
 
                 checkpoint = {
                     'epoch' : epoch,
-                    'model': self.model.state_dict(),   
+                    'model': self.model.state_dict(),  
                     'criterion_state_dict': self.criterion.state_dict(),
                     'optimizer_state_dict' : self.optimizer.state_dict(),
-                    'lr_scheduler_state_dict' : self.scheduler.state_dict()
-                }  
+                    'lr_scheduler_state_dict' : self.scheduler.state_dict(),
+                    'scaler_state_dict': self.scaler.state_dict() # Save scaler state
+                } 
                 torch.save(checkpoint, model_path)
 
             results["train_loss"].append(train_loss)
@@ -144,5 +154,3 @@ class SegmentationTrainer:
 
         plot_metric_curves(results, self.config)
         return results
-
-

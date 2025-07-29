@@ -3,6 +3,12 @@ import torch
 import matplotlib.pyplot as plt
 
 def plot_loss_curves(results):
+    """
+    Plots the training and validation loss over epochs.
+
+    Args:
+        results (dict): Dictionary with 'train_loss' and 'val_loss' lists.
+    """
     plt.figure(figsize=(10, 5))
     plt.plot(results["train_loss"], label="Train Loss")
     plt.plot(results["val_loss"], label="Val Loss")
@@ -15,6 +21,13 @@ def plot_loss_curves(results):
     plt.show()
 
 def plot_metric_curves(results, configs):
+    """
+    Plots the training and validation metrics (accuracy, IoU, Dice) over epochs for segmentation.
+
+    Args:
+        results (dict): Dictionary containing keys like 'train_acc', 'val_acc', 'train_iou', etc.
+        configs (dict): Configuration dictionary containing 'output_dir' and 'task_name'.
+    """
     metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice"]
     titles = {
         "train_acc": "Train Accuracy", "val_acc": "Val Accuracy",
@@ -34,9 +47,20 @@ def plot_metric_curves(results, configs):
         plt.legend()
 
     plt.tight_layout()
+    os.makedirs(os.path.join(configs["output_dir"], '_Segmentation_'), exist_ok=True)
     plt.savefig(os.path.join(configs["output_dir"], '_Segmentation_', f'{configs["task_name"]}_metric_curves.png'))
 
 def display_segmentation_batch(images, masks, configs, class_map=None, n=4):
+    """
+    Saves a batch of input images and corresponding segmentation masks.
+
+    Args:
+        images (Tensor): Input images tensor of shape [B, C, H, W].
+        masks (Tensor): Segmentation masks tensor of shape [B, H, W] or [B, 1, H, W].
+        configs (dict): Configuration dictionary with 'output_dir'.
+        class_map (dict, optional): Dictionary mapping class indices to labels.
+        n (int): Number of samples to display.
+    """
     images = images[:n].cpu()
     masks = masks[:n].cpu()
 
@@ -97,6 +121,13 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         plt.close()
 
 def plot_metric_curves_classification(results, configs):
+    """
+    Plots classification accuracy for training and validation.
+
+    Args:
+        results (dict): Dictionary containing 'train_acc' and 'val_acc'.
+        configs (dict): Configuration dictionary with 'output_dir' and 'task_name'.
+    """
     metrics = ["train_acc", "val_acc"]
     titles = {
         "train_acc": "Train Accuracy", "val_acc": "Val Accuracy"
@@ -117,6 +148,16 @@ def plot_metric_curves_classification(results, configs):
     plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_metric_curves.png'))
 
 def display_classification_batch(images, targets, configs, class_map=None, n=4):
+    """
+    Saves a batch of input classification images with their ground truth labels.
+
+    Args:
+        images (Tensor): Input images tensor of shape [B, C, H, W].
+        targets (Tensor): Class labels tensor of shape [B].
+        configs (dict): Configuration dictionary with 'output_dir'.
+        class_map (dict, optional): Dictionary mapping class indices to class names.
+        n (int): Number of images to display.
+    """
     images = images[:n].cpu()
     targets = targets[:n].cpu()
 
@@ -131,7 +172,7 @@ def display_classification_batch(images, targets, configs, class_map=None, n=4):
         axs[i].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], 'batch.png'))
+    plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_images.png'))
 
 def display_classification_prediction(images, targets, preds, epoch, configs, class_map=None):
     """
@@ -146,7 +187,8 @@ def display_classification_prediction(images, targets, preds, epoch, configs, cl
     targets = targets.detach().cpu()
     preds = preds.detach().cpu()
 
-    preds = torch.argmax(preds, dim=1)
+    if preds.ndim == 2:  # logits/scores
+        preds = torch.argmax(preds, dim=1)
 
     images = images.permute(0, 2, 3, 1).numpy()  # (B, H, W, C)
     targets = targets.numpy()

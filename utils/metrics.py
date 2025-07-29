@@ -4,7 +4,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def one_hot_encode(tensors, num_classes):
     """
     Convert [B, H, W] ground truth to one-hot: [B, C, H, W]
@@ -39,7 +38,6 @@ def calculate_dice_coefficient(outputs, targets, num_classes = 3):
     targets_one_hot = one_hot_encode(targets, num_classes)
 
     # logger.debug(f"The shape of one-hot encoded vector is : {targets_one_hot.shape}")
-
     intersection = (preds_one_hot * targets_one_hot).sum(dim=(0, 2, 3))
 
     dice = (2 * intersection) / (preds_one_hot.sum(dim=(0, 2, 3)) + targets_one_hot.sum(dim=(0, 2, 3)))

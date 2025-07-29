@@ -47,3 +47,26 @@ class SegmentationData(Dataset):
             return image, mask
 
         
+class SegmentationInferenceDataset(Dataset):
+
+    def __init__(self, data_dir:str, transform = None) -> None:
+
+        self.image_dir = os.path.join(data_dir)
+        self.image_lists = os.listdir(self.image_dir)
+        self.transform = transform
+    
+    def __len__(self) -> int:
+        return len(self.image_lists)
+    
+    def __getitem__(self, index: int) -> torch.Tensor:
+        img_path = os.path.join(self.image_dir, self.image_lists[index])
+        image = Image.open(img_path)
+  
+        if self.transform:
+            augmented = self.transform(image = np.array(image))
+            return augmented["image"].float()
+
+        else:
+            return image
+
+        

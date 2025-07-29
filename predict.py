@@ -10,8 +10,8 @@ from PIL import Image
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from datasets.classification_dataset import ClassificationInferenceDataset
-from datasets.segmentation_dataset import SegmentationData
-from utils.visualize import display_classification_batch, display_classification_prediction
+from datasets.segmentation_dataset import SegmentationInferenceDataset
+from utils.visualize import display_classification_batch, display_segmentation_batch
 from utils.transforms import val_transforms_classification, val_transform_segmentation
 from utils.helpers import read_config, get_device, generate_dirs
 
@@ -71,10 +71,9 @@ def main():
                 images = images.to(device)
 
                 preds = model(images)
-                pred_probs = torch.softmax(preds, dim=1)
-                pred_classes = torch.argmax(pred_probs, dim=1)
-
-                display_classification_batch(images, preds, configs)
+                pred_classes = torch.argmax(preds, dim=1)
+                
+                display_classification_batch(images, pred_classes, configs)
 
                 for fname, pred in zip(filenames, preds.cpu().tolist()):
                     all_predictions.append((fname, pred))
@@ -100,20 +99,21 @@ def main():
         # model.load_state_dict(checkpoint)
         model.eval()
 
-        img = Image.open(args.img_path)
-        input_tensor = val_transform_segmentation(image=np.array(img))['image']  
-        input_tensor = input_tensor.unsqueeze(0).to(device)  # Add batch dim and send to device
+        test_data = SegmentationInferenceDataset(args.img_dir, val_transform_segmentation)
+        test_dataloader = DataLoader(test_data, num_workers=configs['num_workers'], shuffle=True, drop_last=True)
 
-        with torch.no_grad():
-            output = model(input_tensor)
-            print(output.shape)
-            prediction = torch.argmax(output, dim=1).squeeze(0).cpu().numpy().astype(np.uint8)
-            print(prediction.shape)
+        os.makedirs(configs["output_dir"], exist_ok=True)
 
-        plt.imshow(prediction, cmap='jet')
-        plt.title("Predicted Segmentation")
-        plt.axis('off')
-        plt.show()
+        all_predictions = []
+
+        for _, images in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset", leave=False)):
+            
+            images = images.to(device)
+
+            preds = model(images)
+            preds = torch.argmax(preds, dim=1)
+
+            display_segmentation_batch(images, preds, configs)
                     
         logger.info("Segmentation output saved as 'output.png'")
 
