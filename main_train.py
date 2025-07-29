@@ -16,6 +16,7 @@ from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+torch.backends.cudnn.benchmark = True
 
 def setup_logger(log_file):
     logging.basicConfig(
@@ -53,17 +54,27 @@ def main():
         train_data = ClassificationData(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification)
         test_data = ClassificationData(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification)
 
-        train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True)
-        test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
-
-        model = timm.create_model('resnet50d', pretrained=True, num_classes=3)
+        train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True, pin_memory=True, persistent_workers=True)
+        test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
+        steps_per_epoch = len(train_dataloader)
+        
+        model = timm.create_model('resnet50d', pretrained=False, num_classes=3)
         model.to(device)
+
+        epochs = configs["num_epochs"]
 
         criterion = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=configs['learning_rate'])
 
-        trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, device, configs, logger=None)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=configs["learning_rate"],
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch
+        )
+
+        trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=None)
 
         results = trainer.train()
         logger.info(results)
@@ -73,8 +84,8 @@ def main():
         train_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "train"), transform = train_transform_segmentation)
         test_dataset = SegmentationData(os.path.join(data_dir, "segmentationData", "test"), transform = val_transform_segmentation)
 
-        train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True)
-        test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False)
+        train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True, pin_memory=True, persistent_workers=True)
+        test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
 
         model = smp.Unet(
             encoder_name="resnet34",

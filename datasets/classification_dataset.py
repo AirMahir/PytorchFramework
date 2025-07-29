@@ -34,10 +34,12 @@ class ClassificationData(Dataset):
         class_name  = self.paths[index].parent.name 
         class_idx = self.class_to_idx[class_name]
 
+        # print(f"Shape for image : {img.size}")
+
         if self.transform:
             transformed = self.transform(image=np.array(img))  # return data, label (X, y)
+            # print(f"Shape for class_idx : {class_idx}")
+            # print(f"Shape for image : {transformed["image"].shape}")
             return transformed["image"], class_idx 
         else:
             return img, class_idx  # return data, label (X, y)
-
-        

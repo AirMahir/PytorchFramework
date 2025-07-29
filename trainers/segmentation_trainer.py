@@ -28,7 +28,7 @@ class SegmentationTrainer:
         iou_score = []
         dice_coeff = []
 
-        for images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
+        for  images, masks in tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", leave=False):
             images, masks = images.to(self.device), masks.to(self.device)
             masks = masks.long()
 
@@ -67,13 +67,17 @@ class SegmentationTrainer:
 
         with torch.no_grad():
 
-            for images, masks in tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False):
+            for i, (images, masks) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
-                display_segmentation_batch(images, masks, self.config)
+                if i == 0:
+                    display_segmentation_batch(images, masks, self.config)
 
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
                 preds = self.model(images)
+
+                if(epoch % 5 == 0):
+                    display_segmentation_prediction(images, masks, preds, epoch, self.config)
 
                 loss = self.criterion(preds, masks)
                 total_loss += loss.item()
@@ -83,12 +87,12 @@ class SegmentationTrainer:
                 dice_coeff.append(calculate_dice_coefficient(preds, masks, num_classes))
 
             return (
-            total_loss / len(self.val_loader),
-            torch.tensor(accuracy).mean().item(),
-            torch.tensor(iou_score).mean().item(),
-            torch.tensor(dice_coeff).mean().item()
-        )
-
+                total_loss / len(self.val_loader),
+                torch.tensor(accuracy).mean().item(),
+                torch.tensor(iou_score).mean().item(),
+                torch.tensor(dice_coeff).mean().item()
+            )
+        
     def train(self):
         num_epochs = self.config["num_epochs"]
         results = {
@@ -111,15 +115,23 @@ class SegmentationTrainer:
             val_loss, val_acc, val_iou, val_dice = self._val_one_epoch(epoch, num_classes)
 
             print(
-                f"Epoch {epoch+1}: "
-                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train IOU : {train_iou:.4f}, Train DiceCoeff : {train_dice:.4f}| "
-                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val IOU : {val_iou:.4f}, Val DiceCoeff : {val_dice:.4f}"
+                f"Epoch {epoch+1:02d} | "
+                f"Train Loss: {train_loss:.4f} | Acc: {train_acc*100:.2f}% | IoU: {train_iou*100:.2f}% | Dice: {train_dice*100:.2f}% || "
+                f"Val Loss: {val_loss:.4f} | Acc: {val_acc*100:.2f}% | IoU: {val_iou*100:.2f}% | Dice: {val_dice*100:.2f}%"
             )
 
             if(val_acc > best_acc):
                 best_acc = val_acc
-                model_path = os.path.join(self.config["output_dir"],  f"best_model_epoch{epoch+1}_acc{val_acc:.4f}.pth")
-                torch.save(self.model.state_dict(), model_path)
+                model_path = os.path.join(self.config["output_dir"],  f"best_checkpoint.pth")
+
+                checkpoint = {
+                    'epoch' : epoch,
+                    'model': self.model.state_dict(),   
+                    'criterion_state_dict': self.criterion.state_dict(),
+                    'optimizer_state_dict' : self.optimizer.state_dict(),
+                    'lr_scheduler_state_dict' : self.scheduler.state_dict()
+                }  
+                torch.save(checkpoint, model_path)
 
             results["train_loss"].append(train_loss)
             results["train_acc"].append(train_acc)
@@ -132,3 +144,5 @@ class SegmentationTrainer:
 
         plot_metric_curves(results, self.config)
         return results
+
+

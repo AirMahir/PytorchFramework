@@ -6,7 +6,7 @@ from PIL import Image
 from typing import Dict, Tuple, List
 from torch.utils.data import Dataset
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__).setLevel(logging.WARNING)
 
 class SegmentationData(Dataset):
 
@@ -36,8 +36,8 @@ class SegmentationData(Dataset):
 
         if self.transform:
             augmented = self.transform(image = np.array(image), mask = np.array(mask).astype(np.float32))
-            logger.debug(f"Size of image: {augmented['image'].shape}")
-            logger.debug(f"Size of mask: {augmented['mask'].shape}")
+            # print(f"Size of image: {augmented['image'].shape}")
+            # print(f"Size of mask: {augmented['mask'].shape}")
 
             # Albumentations returns masks as np.uint8
             # return augmented["image"], augmented["mask"]
