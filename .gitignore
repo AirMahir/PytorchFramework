@@ -1,4 +1,6 @@
 Data
 .*jpg
 .*png
+.*pth
+.*png
 __pycache__
