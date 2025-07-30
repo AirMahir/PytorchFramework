@@ -77,6 +77,8 @@ def run_segmentation_training(configs, device, logger, checkpoint_path=None):
     train_dataloader = DataLoader(train_dataset, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
     test_dataloader = DataLoader(test_dataset, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
 
+    # display_segmentation_batch(train_dataset.images, train_dataset.masks, 0, configs, class_map=train_dataset.class_map, n=8)
+   
     model = smp.Unet(
         encoder_name=model_cfg['encoder_name'],
         encoder_weights=model_cfg['encoder_weights'],
@@ -85,7 +87,6 @@ def run_segmentation_training(configs, device, logger, checkpoint_path=None):
     )
     model.to(device)
 
-    epochs = train_cfg['epochs']
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_lr_scheduler(optimizer, sched_cfg)

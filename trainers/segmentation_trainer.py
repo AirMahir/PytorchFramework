@@ -15,7 +15,7 @@ class SegmentationTrainer:
         self.optimizer = optimizer
         self.criterion = criterion
         self.scheduler = scheduler
-        self.scaler = scaler # Initialize GradScaler for mixed precision
+        self.scaler = scaler 
         self.device = device
         self.config = config
         self.logger = logger 
@@ -72,8 +72,8 @@ class SegmentationTrainer:
         with torch.no_grad():
             for i, (images, masks) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
-                if i == 0:
-                    display_segmentation_batch(images, masks, i, self.config)
+                # if i == 0:
+                #     display_segmentation_batch(images, masks, i, self.config)
 
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
