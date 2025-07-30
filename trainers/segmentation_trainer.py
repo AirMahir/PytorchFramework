@@ -1,25 +1,26 @@
 import os
 import torch
 from tqdm.auto import tqdm
-from torch.amp import autocast, GradScaler
+from torch.amp import autocast
 from utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
 from utils.visualize import display_segmentation_batch, display_segmentation_prediction, plot_metric_curves
 
 class SegmentationTrainer:
 
-    def __init__(self, model, train_loader, val_loader, optimizer, criterion, scheduler, device, config, logger=None):
-
-        self.model = model
+    def __init__(self, model, train_loader, val_loader, optimizer, criterion, scheduler, scaler, device, config, logger=None, start_epoch = 0):
+        
+        self.model = model 
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.criterion = criterion
+        self.scheduler = scheduler
+        self.scaler = scaler # Initialize GradScaler for mixed precision
         self.device = device
         self.config = config
-        self.logger = logger
+        self.logger = logger 
 
-        self.scheduler = scheduler
-        self.scaler = GradScaler() 
+        self.start_epoch = start_epoch
 
     def _train_one_epoch(self, epoch, num_classes):
         self.model.train()
@@ -34,19 +35,14 @@ class SegmentationTrainer:
             masks = masks.long()
 
             # Autocast for automatic mixed precision
-            # with autocast(device_type=self.device.type):
-            #     preds = self.model(images)
-            #     loss = self.criterion(preds, masks)
-            preds = self.model(images)
-            loss = self.criterion(preds, masks)
-            
+            with autocast(device_type=self.device.type):
+                preds = self.model(images)
+                loss = self.criterion(preds, masks)
             total_loss += loss.item()
 
             self.optimizer.zero_grad()
-            
             # Scale the loss and call backward()
             self.scaler.scale(loss).backward()
-            
             # Unscale gradients and update optimizer
             self.scaler.step(self.optimizer)
             self.scaler.update()
@@ -83,12 +79,10 @@ class SegmentationTrainer:
                 masks = masks.long()
                 
                 # No GradScaler needed in validation as there's no backward pass
-                # with autocast(device_type=self.device.type):
-                #     preds = self.model(images)
-                #     loss = self.criterion(preds, masks)
+                with autocast(device_type=self.device.type):
+                    preds = self.model(images)
+                    loss = self.criterion(preds, masks)
 
-                preds = self.model(images)
-                loss = self.criterion(preds, masks)
                 total_loss += loss.item()
 
                 if(epoch % 5 == 0):
@@ -106,7 +100,7 @@ class SegmentationTrainer:
             )
         
     def train(self):
-        num_epochs = self.config["num_epochs"]
+        num_epochs = self.config["training"]["epochs"]
         results = {
             "train_loss": [],
             "train_acc": [],
@@ -118,11 +112,11 @@ class SegmentationTrainer:
             "val_dice": []
         }
 
-        num_classes = self.config["num_classes"]
+        num_classes = self.config["data"]["num_classes"]
         
-        best_acc = 0
+        best_loss = 100
 
-        for epoch in tqdm(range(num_epochs), desc="Training Progress"):
+        for epoch in tqdm(range(self.start_epoch, num_epochs), desc="Training Progress"):
             train_loss, train_acc, train_iou, train_dice = self._train_one_epoch(epoch, num_classes)
             val_loss, val_acc, val_iou, val_dice = self._val_one_epoch(epoch, num_classes)
 
@@ -132,9 +126,9 @@ class SegmentationTrainer:
                 f"Val Loss: {val_loss:.4f} | Acc: {val_acc*100:.2f}% | IoU: {val_iou*100:.2f}% | Dice: {val_dice*100:.2f}%"
             )
 
-            if(val_acc > best_acc):
-                best_acc = val_acc
-                model_path = os.path.join(self.config["output_dir"], f"best_checkpoint.pth")
+            if(val_loss < best_loss):
+                best_loss = val_loss
+                model_path = os.path.join(self.config["checkpoints_dir"], f"best_{self.config["task_type"]}_checkpoint.pth")
 
                 checkpoint = {
                     'epoch' : epoch,
@@ -142,7 +136,7 @@ class SegmentationTrainer:
                     'criterion_state_dict': self.criterion.state_dict(),
                     'optimizer_state_dict' : self.optimizer.state_dict(),
                     'lr_scheduler_state_dict' : self.scheduler.state_dict(),
-                    'scaler_state_dict': self.scaler.state_dict() # Save scaler state
+                    'scaler_state_dict': self.scaler.state_dict() 
                 } 
                 torch.save(checkpoint, model_path)
 

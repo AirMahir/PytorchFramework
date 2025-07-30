@@ -16,12 +16,12 @@ from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
 from utils.logger import setup_logger
 from utils.optimizer_helper import get_optimizer
-from utils.scheduler_helper import get_scheduler
+from utils.scheduler_helper import get_lr_scheduler
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.backends.cudnn.benchmark = True
 
-def run_classification_training(configs, device, logger, data_dir, checkpoint_path):
+def run_classification_training(configs, device, logger, checkpoint_path):
     logger.info("Classification Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
@@ -34,15 +34,16 @@ def run_classification_training(configs, device, logger, data_dir, checkpoint_pa
 
     train_dataloader = DataLoader(train_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
     test_dataloader = DataLoader(test_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
-    steps_per_epoch = len(train_dataloader)
+    
+    logger.info(f"Loaded {len(train_data)} training samples and {len(test_data)} validation samples.")
+    logger.info(f"Using {len(train_dataloader)} training batches and {len(test_dataloader)} validation batches.")
 
     model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', False), num_classes=model_cfg['num_classes'])
     model.to(device)
 
-    epochs = train_cfg['epochs']
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
-    scheduler = get_scheduler(optimizer, sched_cfg)
+    scheduler = get_lr_scheduler(optimizer, sched_cfg)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
     start_epoch = 0
@@ -62,7 +63,7 @@ def run_classification_training(configs, device, logger, data_dir, checkpoint_pa
     logger.info(results)
 
 
-def run_segmentation_training(configs, device, logger, data_dir, checkpoint_path=None):
+def run_segmentation_training(configs, device, logger, checkpoint_path=None):
     logger.info("Segmentation Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
@@ -87,7 +88,7 @@ def run_segmentation_training(configs, device, logger, data_dir, checkpoint_path
     epochs = train_cfg['epochs']
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
-    scheduler = get_scheduler(optimizer, sched_cfg)
+    scheduler = get_lr_scheduler(optimizer, sched_cfg)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
     start_epoch = 0
@@ -109,7 +110,7 @@ def run_segmentation_training(configs, device, logger, data_dir, checkpoint_path
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
     parser.add_argument("--config_path", type=str, required=True, help="Path of the config file")
-    parser.add_argument("--checkpoint", type = str, help = "Path to the checkpoint model - state dict")
+    parser.add_argument("--checkpoint", type = str, help = "Path to the checkpoint model")
     args = parser.parse_args()
 
     configs = read_config(args.config_path)
@@ -121,13 +122,11 @@ def main():
     logger.info("Starting the training script")
     logger.info(f"Using device: {device}")
 
-    data_dir = configs['data_dir']
-
-    if(configs['task_type'] == '0'):
-        run_classification_training(configs, device, logger, data_dir, args.checkpoint)
+    if(configs['task_type'] == 'classification'):
+        run_classification_training(configs, device, logger, args.checkpoint)
 
     else:
-        run_segmentation_training(configs, device, logger, data_dir, args.checkpoint)
+        run_segmentation_training(configs, device, logger, args.checkpoint)
 
 if __name__ == "__main__":
     main()

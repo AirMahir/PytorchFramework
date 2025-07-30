@@ -3,6 +3,7 @@
   "task_name": "Image Segmentation",
   "seed": 42,
   "output_dir": "runs/segmentation",
+  "checkpoints_dir": "checkpoints/segmentation",
   
   "data": {
     "train_dir": "Data/segmentationData/train",
@@ -10,21 +11,23 @@
     "num_classes": 3,
     "image_size": 512
   },
+  
   "model": {
     "name": "Unet",
-    "encoder_name": "resnet34",
-    "encoder_weights": "imagenet",
+    "encoder_name": "timm-efficientnet-b0",
+    "encoder_weights": "noisy-student",
     "in_channels": 3,
-    "classes": 3,
-    "pretrained": true
+    "classes": 3
   },
+  
   "training": {
-    "epochs": 50,
+    "epochs": 20,
     "batch_size": 8,
     "num_workers": 8,
     "log_interval": 10,
     "save_interval": 10
   },
+  
   "optimizer": {
     "optimizer_type": "AdamW",
     "learning_rate": 0.0001,
@@ -33,17 +36,16 @@
     "adamw_beta2": 0.999,
     "adamw_eps": 1e-8
   },
+  
   "scheduler": {
     "scheduler_type": "CosineAnnealingLR",
-    "scheduler_t_max": 50,
-    "scheduler_eta_min": 0,
-    "scheduler_step_size": null,
-    "scheduler_gamma": null,
-    "scheduler_mode": null,
-    "scheduler_factor": null,
-    "scheduler_patience": null,
-    "scheduler_threshold": null,
-    "scheduler_cooldown": null,
-    "scheduler_min_lr": null
+    "scheduler_t_max": 100,
+    "scheduler_eta_min": 0
+  },
+
+  "inference": {
+    "batch_size": 8,
+    "num_workers": 8,
+    "output_dir": "inference_results/segmentation"
   }
 } 

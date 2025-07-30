@@ -3,7 +3,7 @@ import torch
 import logging
 import torch.nn as nn
 from tqdm.auto import tqdm
-from torch.amp import autocast, GradScaler
+from torch.amp import autocast
 from utils.visualize import display_classification_batch, display_classification_prediction, plot_loss_curves, plot_metric_curves
 
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ClassificationTrainer(nn.Module):
 
-    def __init__(self, model, train_loader, val_loader, optimizer, criterion, scheduler, device, config, logger=None):
+    def __init__(self, model, train_loader, val_loader, optimizer, criterion, scheduler, scaler, device, config, logger=None, start_epoch = 0):
 
         super().__init__()
 
@@ -21,10 +21,12 @@ class ClassificationTrainer(nn.Module):
         self.optimizer = optimizer
         self.criterion = criterion
         self.scheduler = scheduler
+        self.scaler = scaler # Initialize GradScaler for mixed precision
         self.device = device
         self.config = config
         self.logger = logger 
-        self.scaler = GradScaler() # Initialize GradScaler for mixed precision
+
+        self.start_epoch = start_epoch
 
     def _train_one_epoch(self, epoch):
 
@@ -48,6 +50,9 @@ class ClassificationTrainer(nn.Module):
             
             # Scale the loss and call backward()
             self.scaler.scale(loss).backward()
+
+            self.scaler.unscale_(self.optimizer) # Must be called before clipping
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0) 
             
             # Unscale gradients and update optimizer
             self.scaler.step(self.optimizer)
@@ -102,7 +107,7 @@ class ClassificationTrainer(nn.Module):
         return avg_val_acc, avg_val_loss
     
     def train(self):
-        num_epochs = self.config["num_epochs"]
+        num_epochs = self.config["training"]["epochs"]
 
         results = {"train_loss": [],
                    "train_acc": [],
@@ -110,27 +115,27 @@ class ClassificationTrainer(nn.Module):
                    "val_acc": []
                 }
         
-        best_acc = 0
+        best_loss = 100
 
         self.logger.info("Starting training process...")
 
-        for epoch in tqdm(range(num_epochs)):
+        for epoch in tqdm(range(self.start_epoch, num_epochs)):
 
             train_acc, train_loss = self._train_one_epoch(epoch)
             val_acc, val_loss = self._val_one_epoch(epoch)
 
             print(
-                f"Epoch: {epoch+1:02d} | "
+                f"Epoch: {epoch:02d} | "
                 f"train_loss: {train_loss:.4f} | "
                 f"train_acc: {train_acc*100:.2f}% | "
                 f"val_loss: {val_loss:.4f} | "
                 f"val_acc: {val_acc*100:.2f}%"
             )
-            self.logger.info(f"Epoch Summary: Epoch: {epoch+1:02d} | train_loss: {train_loss:.4f} | train_acc: {train_acc*100:.2f}% | val_loss: {val_loss:.4f} | val_acc: {val_acc*100:.2f}%")
+            self.logger.info(f"Epoch Summary: Epoch: {epoch:02d} | train_loss: {train_loss:.4f} | train_acc: {train_acc*100:.2f}% | val_loss: {val_loss:.4f} | val_acc: {val_acc*100:.2f}%")
 
-            if(val_acc > best_acc):
-                self.logger.info(f"Validation accuracy improved from {best_acc*100:.2f}% to {val_acc*100:.2f}%. Saving best model...")
-                best_acc = val_acc
+            if(val_loss < best_loss):
+                self.logger.info(f"Validation loss decreased from {best_loss*100:.2f}% to {val_loss*100:.2f}%. Saving best model...")
+                best_loss = val_loss
                 model_path = os.path.join(self.config["output_dir"], f"best_checkpoint.pth")
 
                 checkpoint = {

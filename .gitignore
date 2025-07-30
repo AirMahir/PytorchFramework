@@ -1,7 +1,11 @@
 Data
+runs/
 *.jpg
 *.png
 *.pth
+checkpoints
+classTest
+segTest
 Outputs
 output_classification
 __pycache__

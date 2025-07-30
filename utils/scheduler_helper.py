@@ -1,6 +1,6 @@
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ReduceLROnPlateau
 
-def get_scheduler(optimizer, scheduler_config):
+def get_lr_scheduler(optimizer, scheduler_config):
     sched_type = scheduler_config.get('scheduler_type', 'None')
     if sched_type is None or sched_type.lower() == 'none':
         return None
