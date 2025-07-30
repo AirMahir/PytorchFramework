@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 from PIL import Image
 from typing import Dict, Tuple, List
@@ -13,7 +14,7 @@ class SegmentationDataset(Dataset):
             self.image_dir = data_dir
             self.image_lists = os.listdir(self.image_dir)
         else:
-            self.image_dir = os.path.join(data_dir, "Tiles")
+            self.image_dir = os.path.join(data_dir, "Tile")
             self.mask_dir = os.path.join(data_dir, "Mask")
             self.image_lists = os.listdir(self.image_dir)
 
@@ -40,10 +41,13 @@ class SegmentationDataset(Dataset):
             mask_path = os.path.join(self.mask_dir, img_name)
             mask = Image.open(mask_path).convert("L")
 
+            mask_np = np.array(mask)
+            binary_mask = (mask_np > 153).astype(np.float32)
+
             if self.transform:
-                augmented = self.transform(image = np.array(image), mask = np.array(mask).astype(np.float32))
-                return augmented["image"].float(), augmented["mask"].float() // 51
+                augmented = self.transform(image = np.array(image), mask = np.array(binary_mask).astype(np.float32))
+                return augmented["image"].float(), augmented["mask"].float() 
             else:
-                return image, mask
+                return torch.tensor(np.array(image)), torch.tensor(np.array(mask).astype(np.float32))
 
         

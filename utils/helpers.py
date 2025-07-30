@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import time
 import random
 import shutil
 import numpy as np
@@ -39,6 +40,15 @@ def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
     return classes, class_to_idx
 
+#Decorator to print time for each function execution
+def calculate_time(func):
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start
+        return result, duration
+    return wrapper
+
 
 def seed_everything(seed: int = 42):
     random.seed(seed)
@@ -59,7 +69,6 @@ def set_pytorch_optimizations():
     torch.set_float32_matmul_precision('high')
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.deterministic = False
-    print("PyTorch optimizations applied: high precision matmul, cudnn benchmark enabled")
 
 
 

@@ -35,19 +35,20 @@ def plot_metric_curves(results, configs):
         configs (dict): Configuration dictionary containing 'output_dir' and 'task_type'.
     """
     if configs['task_type'] == 'classification':  # Classification
-        metrics = ["train_acc", "val_acc"]
+        metrics = ["train_acc", "val_acc", "lr"]
         titles = {
-            "train_acc": "Train Accuracy", "val_acc": "Val Accuracy"
+            "train_acc": "Train Accuracy", "val_acc": "Val Accuracy", "lr": "Learning Rate"
         }
         subplot_rows = 1
         subplot_cols = 2
         figsize = (15, 5)  # Adjusted figsize for classification
     else:  # Segmentation
-        metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice"]
+        metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice", "lr"]
         titles = {
             "train_acc": "Train Accuracy", "val_acc": "Val Accuracy",
             "train_iou": "Train IoU", "val_iou": "Val IoU",
-            "train_dice": "Train Dice", "val_dice": "Val Dice"
+            "train_dice": "Train Dice", "val_dice": "Val Dice",
+            "lr": "Learning Rate"
         }
         subplot_rows = 3
         subplot_cols = 2

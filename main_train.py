@@ -44,7 +44,7 @@ def run_classification_training(configs, device, logger, checkpoint_path):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
-    scheduler = get_lr_scheduler(optimizer, sched_cfg)
+    scheduler = get_lr_scheduler(optimizer)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
     start_epoch = 0
@@ -63,14 +63,13 @@ def run_classification_training(configs, device, logger, checkpoint_path):
     results = trainer.train()
     logger.info(results)
 
-
 def run_segmentation_training(configs, device, logger, checkpoint_path=None):
     logger.info("Segmentation Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
     train_cfg = configs['training']
-    opt_cfg = configs['optimizer']
-    sched_cfg = configs['scheduler']
+    opt_cfg = configs['optimizer_type']
+    sched_cfg = configs['scheduler_type']
 
     train_dataset = SegmentationDataset(data_cfg['train_dir'], transform=train_transform_segmentation)
     test_dataset = SegmentationDataset(data_cfg['val_dir'], transform=val_transform_segmentation)
@@ -90,7 +89,7 @@ def run_segmentation_training(configs, device, logger, checkpoint_path=None):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
-    scheduler = get_lr_scheduler(optimizer, sched_cfg)
+    scheduler = get_lr_scheduler(optimizer)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
     start_epoch = 0

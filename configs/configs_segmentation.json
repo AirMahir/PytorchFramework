@@ -6,10 +6,10 @@
   "checkpoints_dir": "checkpoints/segmentation",
   
   "data": {
-    "train_dir": "Data/segmentationData/train",
-    "val_dir": "Data/segmentationData/test",
-    "num_classes": 3,
-    "image_size": 512
+    "train_dir": "Data/Segmentation-Data/Train",
+    "val_dir": "Data/Segmentation-Data/Val",
+    "num_classes": 2,
+    "image_size": 384
   },
   
   "model": {
@@ -17,23 +17,23 @@
     "encoder_name": "timm-efficientnet-b0",
     "encoder_weights": "noisy-student",
     "in_channels": 3,
-    "classes": 3
+    "classes": 2
   },
   
   "training": {
     "epochs": 20,
-    "batch_size": 8,
-    "num_workers": 8,
+    "batch_size": 16,
+    "num_workers": 16,
     "log_interval": 10,
     "save_interval": 5
   },
   
   "optimizer_type": "AdamW",
-  "scheduler_type": "CosineAnnealingLR",
+  "scheduler_type": "CosineLRScheduler",
 
   "inference": {
-    "batch_size": 8,
-    "num_workers": 8,
+    "batch_size": 16,
+    "num_workers": 16,
     "output_dir": "inference_results/segmentation"
   }
 } 

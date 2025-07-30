@@ -1,9 +1,8 @@
 from torch.utils.data import DataLoader
-from utils.helpers import read_config, get_device, generate_dirs, seed_everything, set_pytorch_optimizations
-from utils.logger import setup_logger
+from utils.helpers import read_config, get_device, set_pytorch_optimizations, generate_dirs
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
-from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
+from utils.transforms import train_transforms_classification, train_transform_segmentation
 from utils.visualize import display_classification_batch, display_segmentation_batch
 
 # Set PyTorch performance optimizations
@@ -19,6 +18,7 @@ def main():
         config_path = "configs/configs_classification.json"
     
     config = read_config(config_path)
+    generate_dirs(config)
     
     # Set device
     device = get_device()
@@ -28,7 +28,7 @@ def main():
     if task_type == "segmentation":
         train_dataset = SegmentationDataset(
             data_dir=config["data"]["train_dir"],
-            transform=train_transform_segmentation
+            transform=None
         )
         
         train_loader = DataLoader(
