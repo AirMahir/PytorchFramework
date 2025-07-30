@@ -13,27 +13,10 @@ from utils.helpers import read_config, get_device, generate_dirs, seed_everythin
 from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
+from utils.logger import setup_logger
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.backends.cudnn.benchmark = True
-
-def setup_logger(log_file):
-    logging.basicConfig(
-        filename = log_file,
-        encoding = "utf-8",
-        level=logging.INFO, # Changed to INFO for a more professional log, can be DEBUG if needed
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-
-    root_logger = logging.getLogger()
-    if not root_logger.handlers:
-        root_logger.addHandler(console_handler)
-    return logging.getLogger(__name__)
 
 def run_classification_training(configs, device, logger, data_dir):
     logger.info("Classification Training")
@@ -62,7 +45,6 @@ def run_classification_training(configs, device, logger, data_dir):
     trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=logger)
     results = trainer.train()
     logger.info(results)
-
 
 def run_segmentation_training(configs, device, logger, data_dir):
     train_dataset = SegmentationDataset(os.path.join(data_dir, "segmentationData", "train"), transform = train_transform_segmentation)

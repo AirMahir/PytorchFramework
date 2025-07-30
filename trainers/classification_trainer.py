@@ -77,7 +77,7 @@ class ClassificationTrainer(nn.Module):
             for i, (images, targets) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
                 if i == 0:
-                    display_classification_batch(images, targets, self.config)
+                    display_classification_batch(images, targets, i, self.config)
                     
                 images, targets = images.to(self.device), targets.to(self.device).long()
 

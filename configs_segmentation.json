@@ -1,0 +1,45 @@
+{
+  "task_type": "segmentation",
+  "task_name": "Image Segmentation",
+  "seed": 42,
+  "output_dir": "runs/segmentation",
+  
+  "data": {
+    "train_dir": "Data/segmentationData/train",
+    "val_dir": "Data/segmentationData/test",
+    "num_classes": 3,
+    "image_size": 512
+  },
+  
+  "model": {
+    "name": "Unet",
+    "encoder_name": "resnet34",
+    "encoder_weights": "imagenet",
+    "in_channels": 3,
+    "classes": 3,
+    "pretrained": true
+  },
+  
+  "training": {
+    "epochs": 50,
+    "batch_size": 8,
+    "num_workers": 8,
+    "log_interval": 10,
+    "save_interval": 10
+  },
+  
+  "optimizer": {
+    "optimizer_type": "AdamW",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "adamw_beta1": 0.9,
+    "adamw_beta2": 0.999,
+    "adamw_eps": 1e-8
+  },
+  
+  "scheduler": {
+    "scheduler_type": "CosineAnnealingLR",
+    "scheduler_t_max": 100,
+    "scheduler_eta_min": 0
+  }
+} 

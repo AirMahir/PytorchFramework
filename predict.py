@@ -14,6 +14,7 @@ from datasets.segmentation_dataset import SegmentationDataset
 from utils.visualize import display_classification_batch, display_segmentation_batch
 from utils.transforms import val_transforms_classification, val_transform_segmentation
 from utils.helpers import read_config, get_device, generate_dirs, seed_everything
+from utils.logger import setup_logger
 
 import matplotlib.pyplot as plt
 
@@ -21,23 +22,6 @@ import matplotlib.pyplot as plt
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.backends.cudnn.benchmark = True
 
-def setup_logger(log_file):
-    logging.basicConfig(
-        filename = log_file,
-        encoding = "utf-8",
-        level=logging.INFO,
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    # Adding a console handler to see logs in terminal
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    # Get the root logger and add the console handler
-    root_logger = logging.getLogger()
-    if not root_logger.handlers: # Avoid adding duplicate handlers if setup_logger is called multiple times
-        root_logger.addHandler(console_handler)
-    return logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description="pytorch based framework for classifcation and segmentation tasks")
@@ -86,7 +70,7 @@ def main():
                 preds = model(images)
                 pred_classes = torch.argmax(preds, dim=1)
                 
-                display_classification_batch(images, pred_classes, configs)
+                display_classification_batch(images, pred_classes, configs, n=len(images))
 
                 for fname, pred in zip(filenames, preds.cpu().tolist()):
                     all_predictions.append((fname, pred))

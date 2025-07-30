@@ -138,7 +138,7 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         plt.savefig(save_path)
         plt.close()
 
-def display_classification_batch(images, targets, configs, class_map=None, n=4):
+def display_classification_batch(images, targets, idx, configs, class_map=None, n=4):
     """
     Saves a batch of input classification images with their ground truth labels.
 
@@ -163,7 +163,7 @@ def display_classification_batch(images, targets, configs, class_map=None, n=4):
         axs[i].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_images.png'))
+    plt.savefig(os.path.join(configs["output_dir"], f'batch_{idx}_images.png'))
     plt.close()
 
 def display_classification_prediction(images, targets, preds, epoch, configs, class_map=None):

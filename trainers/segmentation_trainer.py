@@ -82,7 +82,6 @@ class SegmentationTrainer:
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
                 
-                
                 # No GradScaler needed in validation as there's no backward pass
                 # with autocast(device_type=self.device.type):
                 #     preds = self.model(images)

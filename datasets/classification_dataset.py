@@ -37,9 +37,6 @@ class ClassificationDataset(Dataset):
     
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
         img = self.load_image(index)
-        class_name  = self.paths[index].parent.name 
-        class_idx = self.class_to_idx[class_name]
-
         if self.transform:
             transformed_img = self.transform(image=np.array(img))["image"]
         else:
