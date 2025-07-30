@@ -10,7 +10,7 @@ from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
-from utils.helpers import read_config, get_device, generate_dirs, seed_everything
+from utils.helpers import read_config, get_device, generate_dirs, seed_everything, set_pytorch_optimizations
 from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
@@ -18,8 +18,9 @@ from utils.logger import setup_logger
 from utils.optimizer_helper import get_optimizer
 from utils.scheduler_helper import get_lr_scheduler
 
+# Set PyTorch performance optimizations
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-torch.backends.cudnn.benchmark = True
+set_pytorch_optimizations()
 
 def run_classification_training(configs, device, logger, checkpoint_path):
     logger.info("Classification Training")

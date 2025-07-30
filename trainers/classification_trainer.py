@@ -5,7 +5,10 @@ import torch.nn as nn
 from tqdm.auto import tqdm
 from torch.amp import autocast
 from utils.visualize import display_classification_batch, display_classification_prediction, plot_loss_curves, plot_metric_curves
+from utils.helpers import set_pytorch_optimizations
 
+# Set PyTorch performance optimizations
+set_pytorch_optimizations()
 
 logger = logging.getLogger(__name__)
 

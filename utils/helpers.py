@@ -45,8 +45,21 @@ def seed_everything(seed: int = 42):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+
+
+def set_pytorch_optimizations():
+    """
+    Set PyTorch performance optimizations for better training and inference speed.
+    This includes:
+    - High precision matrix multiplication
+    - CUDNN benchmark mode for faster convolutions
+    - Non-deterministic mode for better performance
+    """
+    import torch
+    torch.set_float32_matmul_precision('high')
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = False
+    print("PyTorch optimizations applied: high precision matmul, cudnn benchmark enabled")
 
 
 

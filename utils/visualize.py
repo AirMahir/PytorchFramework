@@ -97,12 +97,14 @@ def display_segmentation_batch(images, masks, idx, configs, class_map=None, n=4)
         axs[i, 1].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], f'batch_{idx}_images.png'))
+    plt.savefig(os.path.join(configs["output_dir"], f'dataset_sample_batch_{idx}_images.png'))
     plt.close()
 
 def display_segmentation_prediction(images, masks, preds, epoch, configs, class_map=None):
     """
-    Saves predictions, masks, and input images for a full batch.
+    Saves predictions, masks, and input images for ALL samples in the batch.
+    This function is called every 5th epoch to visualize model predictions.
+    
     Inputs:
         images: Tensor [B, C, H, W]
         masks: Tensor [B, H, W]
@@ -198,3 +200,27 @@ def display_classification_prediction(images, targets, preds, epoch, configs, cl
         save_path = os.path.join(configs["output_dir"], f"epoch_{epoch}_sample_{idx}.png")
         plt.savefig(save_path)
         plt.close()
+
+def explore_segmentation_dataset(dataloader, configs, num_batches=3, samples_per_batch=4, class_map=None):
+    """
+    Utility function to explore and visualize segmentation dataset samples.
+    This should be called before training to understand the dataset.
+    
+    Args:
+        dataloader: DataLoader containing the dataset
+        configs (dict): Configuration dictionary with 'output_dir'
+        num_batches (int): Number of batches to visualize
+        samples_per_batch (int): Number of samples to show per batch
+        class_map (dict, optional): Dictionary mapping class indices to labels
+    """
+    print(f"Exploring segmentation dataset...")
+    print(f"Will visualize {num_batches} batches with {samples_per_batch} samples each")
+    
+    for batch_idx, (images, masks) in enumerate(dataloader):
+        if batch_idx >= num_batches:
+            break
+            
+        print(f"Visualizing batch {batch_idx + 1}/{num_batches}")
+        display_segmentation_batch(images, masks, batch_idx, configs, class_map, samples_per_batch)
+    
+    print(f"Dataset exploration complete. Check {configs['output_dir']} for visualization files.")

@@ -4,6 +4,10 @@ from tqdm.auto import tqdm
 from torch.amp import autocast
 from utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
 from utils.visualize import display_segmentation_batch, display_segmentation_prediction, plot_metric_curves
+from utils.helpers import set_pytorch_optimizations
+
+# Set PyTorch performance optimizations
+set_pytorch_optimizations()
 
 class SegmentationTrainer:
 

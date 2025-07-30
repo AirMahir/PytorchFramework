@@ -4,7 +4,7 @@ import torch
 import timm
 import segmentation_models_pytorch as smp
 from torch.utils.data import DataLoader
-from utils.helpers import read_config, get_device, generate_dirs, seed_everything
+from utils.helpers import read_config, get_device, generate_dirs, seed_everything, set_pytorch_optimizations
 from utils.logger import setup_logger
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
@@ -12,6 +12,8 @@ from utils.transforms import val_transforms_classification, val_transform_segmen
 from utils.visualize import display_classification_batch, display_segmentation_batch
 from tqdm.auto import tqdm
 
+# Set PyTorch performance optimizations
+set_pytorch_optimizations()
 
 def setup_environment(config_path, log_filename):
     configs = read_config(config_path)
