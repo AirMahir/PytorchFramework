@@ -6,6 +6,7 @@ import argparse
 import torch.nn as nn
 import segmentation_models_pytorch as smp
 
+from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
@@ -14,63 +15,13 @@ from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
 from utils.logger import setup_logger
-from timm.optim import AdamP
-from torch.optim import Adam, AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ReduceLROnPlateau
+from utils.optimizer_helper import get_optimizer
+from utils.scheduler_helper import get_scheduler
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.backends.cudnn.benchmark = True
 
-def get_optimizer(model, optimizer_config):
-    opt_type = optimizer_config.get('optimizer_type', 'AdamW').lower()
-    lr = optimizer_config.get('learning_rate', 1e-3)
-    weight_decay = optimizer_config.get('weight_decay', 0.0)
-    betas = (
-        optimizer_config.get('adamw_beta1', 0.9),
-        optimizer_config.get('adamw_beta2', 0.999)
-    )
-    eps = optimizer_config.get('adamw_eps', 1e-8)
-    if opt_type == 'adamw':
-        return AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
-    elif opt_type == 'adam':
-        return Adam(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
-    elif opt_type == 'adamp':
-        return AdamP(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
-    else:
-        raise ValueError(f"Unsupported optimizer type: {opt_type}")
-
-def get_scheduler(optimizer, scheduler_config):
-    sched_type = scheduler_config.get('scheduler_type', 'None')
-    if sched_type is None or sched_type.lower() == 'none':
-        return None
-    sched_type = sched_type.lower()
-    if sched_type == 'cosineannealinglr':
-        return CosineAnnealingLR(
-            optimizer,
-            T_max=scheduler_config.get('scheduler_t_max', 50),
-            eta_min=scheduler_config.get('scheduler_eta_min', 0)
-        )
-    elif sched_type == 'steplr':
-        return StepLR(
-            optimizer,
-            step_size=scheduler_config.get('scheduler_step_size', 10),
-            gamma=scheduler_config.get('scheduler_gamma', 0.1)
-        )
-    elif sched_type == 'reducelronplateau':
-        return ReduceLROnPlateau(
-            optimizer,
-            mode=scheduler_config.get('scheduler_mode', 'min'),
-            factor=scheduler_config.get('scheduler_factor', 0.1),
-            patience=scheduler_config.get('scheduler_patience', 10),
-            threshold=scheduler_config.get('scheduler_threshold', 1e-4),
-            cooldown=scheduler_config.get('scheduler_cooldown', 0),
-            min_lr=scheduler_config.get('scheduler_min_lr', 0)
-        )
-    else:
-        raise ValueError(f"Unsupported scheduler type: {sched_type}")
-
-
-def run_classification_training(configs, device, logger, data_dir):
+def run_classification_training(configs, device, logger, data_dir, checkpoint_path):
     logger.info("Classification Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
@@ -92,13 +43,26 @@ def run_classification_training(configs, device, logger, data_dir):
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_scheduler(optimizer, sched_cfg)
+    scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
-    trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=logger)
+    start_epoch = 0
+    if checkpoint_path:
+        logger.info(f"Loading model checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        start_epoch = checkpoint['epoch'] + 1
+        logger.info(f"Resuming training from epoch {start_epoch-1}")
+        model.load_state_dict(checkpoint['model'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
+        scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        logger.info("Model checkpoint loaded successfully.")
+
+    trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, scaler, device, configs, logger=logger, start_epoch=start_epoch)
     results = trainer.train()
     logger.info(results)
 
 
-def run_segmentation_training(configs, device, logger, data_dir):
+def run_segmentation_training(configs, device, logger, data_dir, checkpoint_path=None):
     logger.info("Segmentation Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
@@ -124,8 +88,21 @@ def run_segmentation_training(configs, device, logger, data_dir):
     criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_scheduler(optimizer, sched_cfg)
+    scaler = GradScaler()  # Initialize GradScaler for mixed precision
 
-    trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=logger)
+    start_epoch = 0
+    if checkpoint_path:
+        logger.info(f"Loading model checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        start_epoch = checkpoint['epoch'] + 1
+        logger.info(f"Resuming training from epoch {start_epoch-1}")
+        model.load_state_dict(checkpoint['model'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
+        scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        logger.info("Model checkpoint loaded successfully.")
+
+    trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, scaler, device, configs, logger=logger, start_epoch=start_epoch)
     results = trainer.train()
     logger.info(results)
 
@@ -147,10 +124,10 @@ def main():
     data_dir = configs['data_dir']
 
     if(configs['task_type'] == '0'):
-        run_classification_training(configs, device, logger, data_dir)
+        run_classification_training(configs, device, logger, data_dir, args.checkpoint)
 
     else:
-        run_segmentation_training(configs, device, logger, data_dir)
+        run_segmentation_training(configs, device, logger, data_dir, args.checkpoint)
 
 if __name__ == "__main__":
     main()
