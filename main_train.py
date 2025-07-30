@@ -14,71 +14,118 @@ from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
 from utils.logger import setup_logger
+from timm.optim import AdamP
+from torch.optim import Adam, AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ReduceLROnPlateau
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 torch.backends.cudnn.benchmark = True
 
+def get_optimizer(model, optimizer_config):
+    opt_type = optimizer_config.get('optimizer_type', 'AdamW').lower()
+    lr = optimizer_config.get('learning_rate', 1e-3)
+    weight_decay = optimizer_config.get('weight_decay', 0.0)
+    betas = (
+        optimizer_config.get('adamw_beta1', 0.9),
+        optimizer_config.get('adamw_beta2', 0.999)
+    )
+    eps = optimizer_config.get('adamw_eps', 1e-8)
+    if opt_type == 'adamw':
+        return AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
+    elif opt_type == 'adam':
+        return Adam(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
+    elif opt_type == 'adamp':
+        return AdamP(model.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps)
+    else:
+        raise ValueError(f"Unsupported optimizer type: {opt_type}")
+
+def get_scheduler(optimizer, scheduler_config):
+    sched_type = scheduler_config.get('scheduler_type', 'None')
+    if sched_type is None or sched_type.lower() == 'none':
+        return None
+    sched_type = sched_type.lower()
+    if sched_type == 'cosineannealinglr':
+        return CosineAnnealingLR(
+            optimizer,
+            T_max=scheduler_config.get('scheduler_t_max', 50),
+            eta_min=scheduler_config.get('scheduler_eta_min', 0)
+        )
+    elif sched_type == 'steplr':
+        return StepLR(
+            optimizer,
+            step_size=scheduler_config.get('scheduler_step_size', 10),
+            gamma=scheduler_config.get('scheduler_gamma', 0.1)
+        )
+    elif sched_type == 'reducelronplateau':
+        return ReduceLROnPlateau(
+            optimizer,
+            mode=scheduler_config.get('scheduler_mode', 'min'),
+            factor=scheduler_config.get('scheduler_factor', 0.1),
+            patience=scheduler_config.get('scheduler_patience', 10),
+            threshold=scheduler_config.get('scheduler_threshold', 1e-4),
+            cooldown=scheduler_config.get('scheduler_cooldown', 0),
+            min_lr=scheduler_config.get('scheduler_min_lr', 0)
+        )
+    else:
+        raise ValueError(f"Unsupported scheduler type: {sched_type}")
+
+
 def run_classification_training(configs, device, logger, data_dir):
     logger.info("Classification Training")
+    data_cfg = configs['data']
+    model_cfg = configs['model']
+    train_cfg = configs['training']
+    opt_cfg = configs['optimizer']
+    sched_cfg = configs['scheduler']
 
-    train_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification, logger=logger)
-    test_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification, logger=logger)
+    train_data = ClassificationDataset(data_cfg['train_dir'], transform=train_transforms_classification, logger=logger)
+    test_data = ClassificationDataset(data_cfg['val_dir'], transform=val_transforms_classification, logger=logger)
 
-    train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True, pin_memory=True, persistent_workers=True)
-    test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
+    train_dataloader = DataLoader(train_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
+    test_dataloader = DataLoader(test_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
     steps_per_epoch = len(train_dataloader)
-    
-    model = timm.create_model(configs['classification_config']['model_name'], pretrained=False, num_classes=configs['num_classes'])
+
+    model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', False), num_classes=model_cfg['num_classes'])
     model.to(device)
 
-    epochs = configs["num_epochs"]
-
+    epochs = train_cfg['epochs']
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=configs['learning_rate'])
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=configs["learning_rate"],
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch
-    )
+    optimizer = get_optimizer(model, opt_cfg)
+    scheduler = get_scheduler(optimizer, sched_cfg)
 
     trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=logger)
     results = trainer.train()
     logger.info(results)
 
-def run_segmentation_training(configs, device, logger, data_dir):
-    train_dataset = SegmentationDataset(os.path.join(data_dir, "segmentationData", "train"), transform = train_transform_segmentation)
-    test_dataset = SegmentationDataset(os.path.join(data_dir, "segmentationData", "test"), transform = val_transform_segmentation)
 
-    train_dataloader = DataLoader(train_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True, pin_memory=True, persistent_workers=True)
-    test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
+def run_segmentation_training(configs, device, logger, data_dir):
+    logger.info("Segmentation Training")
+    data_cfg = configs['data']
+    model_cfg = configs['model']
+    train_cfg = configs['training']
+    opt_cfg = configs['optimizer']
+    sched_cfg = configs['scheduler']
+
+    train_dataset = SegmentationDataset(data_cfg['train_dir'], transform=train_transform_segmentation)
+    test_dataset = SegmentationDataset(data_cfg['val_dir'], transform=val_transform_segmentation)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
 
     model = smp.Unet(
-        encoder_name=configs['segmentation_config']['encoder_name'],
-        encoder_weights=configs['segmentation_config']['encoder_weights'],
-        in_channels=configs['segmentation_config']['in_channels'],
-        classes=configs['num_classes']
+        encoder_name=model_cfg['encoder_name'],
+        encoder_weights=model_cfg['encoder_weights'],
+        in_channels=model_cfg['in_channels'],
+        classes=model_cfg['classes']
     )
     model.to(device)
 
-    # Expects (B, 1, H, W )
+    epochs = train_cfg['epochs']
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=configs['learning_rate'])
-    steps_per_epoch = len(train_dataloader)
-    epochs = configs["num_epochs"]
+    optimizer = get_optimizer(model, opt_cfg)
+    scheduler = get_scheduler(optimizer, sched_cfg)
 
-    if steps_per_epoch == 0 or epochs == 0:
-        raise ValueError("Invalid scheduler configuration: steps_per_epoch or epochs is 0.")
-
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=configs["learning_rate"],
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch
-    )
-
-    trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer , criterion, scheduler, device, configs, logger=logger)
-
+    trainer = SegmentationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, device, configs, logger=logger)
     results = trainer.train()
     logger.info(results)
 
