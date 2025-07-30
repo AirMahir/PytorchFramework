@@ -3,7 +3,7 @@ import torch
 import logging
 import torch.nn as nn
 from tqdm.auto import tqdm
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from utils.visualize import display_classification_batch, display_classification_prediction, plot_loss_curves, plot_metric_curves
 
 
@@ -38,7 +38,7 @@ class ClassificationTrainer(nn.Module):
             images, targets = images.to(self.device), targets.to(self.device).long()
             
             # Autocast for automatic mixed precision
-            with autocast():
+            with autocast(device_type=self.device.type):
                 targets_pred = self.model(images)
                 loss = self.criterion(targets_pred, targets)
             
@@ -82,15 +82,15 @@ class ClassificationTrainer(nn.Module):
                 images, targets = images.to(self.device), targets.to(self.device).long()
 
                 # Autocast for automatic mixed precision during validation (no scaler needed)
-                with autocast():
+                with autocast(device_type=self.device.type):
                     test_preds = self.model(images)
+                    loss = self.criterion(test_preds, targets)
+
+                val_loss += loss.item()
 
                 if epoch % 5 == 0:
                     display_classification_prediction(images, targets, test_preds, epoch, self.config)
 
-                loss = self.criterion(test_preds, targets)
-                val_loss += loss.item()
-                
                 test_pred_labels = torch.argmax(test_preds, dim=1)
                 val_correct_predictions += (test_pred_labels == targets).sum().item()
             

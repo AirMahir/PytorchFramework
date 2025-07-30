@@ -9,7 +9,7 @@ from utils.helpers import find_classes
 
 class ClassificationDataset(Dataset):
 
-    def __init__(self, image_dir:str, transform = None, is_inference: bool = False) -> None:
+    def __init__(self, image_dir:str, transform = None, is_inference: bool = False, logger = None) -> None:
 
         self.image_dir = image_dir
         if is_inference:
@@ -19,11 +19,13 @@ class ClassificationDataset(Dataset):
             self.classes, self.class_to_idx = find_classes(image_dir)
 
         self.transform = transform
+        self.logger = logger
         self.is_inference = is_inference
 
         print(f"Loaded {len(self.paths)} images from {image_dir}")
 
     def __repr__(self):
+        self.logger.info(f"ClassificationDataset(num_samples={len(self)}, image_dir={self.image_dir})")
         return f"ClassificationDataset(num_samples={len(self)}, image_dir={self.image_dir})"
     
     def load_image(self, index: int) -> Image.Image:

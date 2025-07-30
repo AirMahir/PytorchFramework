@@ -1,10 +1,9 @@
 import os
 import torch
-import torch.nn as nn
 from tqdm.auto import tqdm
+from torch.amp import autocast, GradScaler
 from utils.metrics import calculate_accuracy, calculate_dice_coefficient, calculate_iou_score
 from utils.visualize import display_segmentation_batch, display_segmentation_prediction, plot_metric_curves
-from torch.cuda.amp import autocast, GradScaler 
 
 class SegmentationTrainer:
 
@@ -35,9 +34,11 @@ class SegmentationTrainer:
             masks = masks.long()
 
             # Autocast for automatic mixed precision
-            with autocast():
-                preds = self.model(images)
-                loss = self.criterion(preds, masks)
+            # with autocast(device_type=self.device.type):
+            #     preds = self.model(images)
+            #     loss = self.criterion(preds, masks)
+            preds = self.model(images)
+            loss = self.criterion(preds, masks)
             
             total_loss += loss.item()
 
@@ -76,20 +77,23 @@ class SegmentationTrainer:
             for i, (images, masks) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
                 if i == 0:
-                    display_segmentation_batch(images, masks, self.config)
+                    display_segmentation_batch(images, masks, i, self.config)
 
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
                 
+                
                 # No GradScaler needed in validation as there's no backward pass
-                with autocast():
-                    preds = self.model(images)
+                # with autocast(device_type=self.device.type):
+                #     preds = self.model(images)
+                #     loss = self.criterion(preds, masks)
+
+                preds = self.model(images)
+                loss = self.criterion(preds, masks)
+                total_loss += loss.item()
 
                 if(epoch % 5 == 0):
                     display_segmentation_prediction(images, masks, preds, epoch, self.config)
-
-                loss = self.criterion(preds, masks)
-                total_loss += loss.item()
 
                 accuracy.append(calculate_accuracy(preds, masks))
                 iou_score.append(calculate_iou_score(preds, masks, num_classes))

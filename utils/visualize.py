@@ -67,7 +67,7 @@ def plot_metric_curves(results, configs):
     plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_metric_curves.png'))
     plt.close() # Close the plot to free memory
 
-def display_segmentation_batch(images, masks, configs, class_map=None, n=4):
+def display_segmentation_batch(images, masks, idx, configs, class_map=None, n=4):
     """
     Saves a batch of input images and corresponding segmentation masks.
 
@@ -91,12 +91,13 @@ def display_segmentation_batch(images, masks, configs, class_map=None, n=4):
         axs[i, 0].set_title("Image")
         axs[i, 0].axis('off')
 
-        axs[i, 1].imshow(mask, cmap='jet', vmin=0, vmax=(len(class_map)-1 if class_map else None))
+        axs[i, 1].imshow(mask.astype('uint8'), cmap='jet', vmin=0, vmax=(len(class_map)-1 if class_map else None))
         axs[i, 1].set_title("Mask")
         axs[i, 1].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], '_Segmentation_', 'batch.png'))
+    plt.savefig(os.path.join(configs["output_dir"], f'batch_{idx}_images.png'))
+    plt.close()
 
 def display_segmentation_prediction(images, masks, preds, epoch, configs, class_map=None):
     """
@@ -124,7 +125,7 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         axs[0].set_title("Image")
         axs[0].axis("off")
 
-        axs[1].imshow(masks[idx], cmap="jet", vmin=0, vmax=(len(class_map)-1 if class_map else None))
+        axs[1].imshow(masks[idx].astype('uint8'), cmap="jet", vmin=0, vmax=(len(class_map)-1 if class_map else None))
         axs[1].set_title("Ground Truth")
         axs[1].axis("off")
 
@@ -133,7 +134,7 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         axs[2].axis("off")
 
         plt.tight_layout()
-        save_path = os.path.join(configs["output_dir"], '_Segmentation_', f"epoch_{epoch}_sample_{idx}.png")
+        save_path = os.path.join(configs["output_dir"], f"epoch_{epoch}_sample_{idx}.png")
         plt.savefig(save_path)
         plt.close()
 
@@ -163,6 +164,7 @@ def display_classification_batch(images, targets, configs, class_map=None, n=4):
 
     plt.tight_layout()
     plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_images.png'))
+    plt.close()
 
 def display_classification_prediction(images, targets, preds, epoch, configs, class_map=None):
     """

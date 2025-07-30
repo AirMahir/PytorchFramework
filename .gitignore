@@ -1,7 +1,7 @@
 Data
-.*jpg
-.*png
-.*pth
+*.jpg
+*.png
+*.pth
 Outputs
 output_classification
 __pycache__

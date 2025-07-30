@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import random
+import shutil
 import numpy as np
 from typing import Tuple, List, Dict
 
@@ -18,8 +19,13 @@ def get_device():
     return device
 
 def generate_dirs(configs:dict) -> None:
-    os.makedirs(configs["output_dir"], exist_ok=True)
+    output_dir = configs["output_dir"]
 
+    if os.path.exists(output_dir):
+        print(f"Warning: '{output_dir}' already exists. Deleting its contents...")
+        shutil.rmtree(output_dir)
+
+    os.makedirs(output_dir, exist_ok=True)
 
 def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
     # 1. Get the class names by scanning the target directory

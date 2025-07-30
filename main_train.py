@@ -9,7 +9,7 @@ import segmentation_models_pytorch as smp
 from torch.utils.data import DataLoader
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
-from utils.helpers import read_config, get_device, generate_dirs
+from utils.helpers import read_config, get_device, generate_dirs, seed_everything
 from trainers.classification_trainer import ClassificationTrainer
 from trainers.segmentation_trainer import SegmentationTrainer
 from utils.transforms import train_transforms_classification, val_transforms_classification, train_transform_segmentation, val_transform_segmentation
@@ -24,22 +24,22 @@ def setup_logger(log_file):
         level=logging.INFO, # Changed to INFO for a more professional log, can be DEBUG if needed
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    # Also adding a console handler to see logs in terminal
+    
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
-    # Get the root logger and add the console handler
+
     root_logger = logging.getLogger()
-    if not root_logger.handlers: # Avoid adding duplicate handlers if setup_logger is called multiple times
+    if not root_logger.handlers:
         root_logger.addHandler(console_handler)
     return logging.getLogger(__name__)
 
 def run_classification_training(configs, device, logger, data_dir):
     logger.info("Classification Training")
 
-    train_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification)
-    test_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification)
+    train_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "train"), transform = train_transforms_classification, logger=logger)
+    test_data = ClassificationDataset(os.path.join(data_dir, "classificationData", "test"), transform = val_transforms_classification, logger=logger)
 
     train_dataloader = DataLoader(train_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = True, drop_last=True, pin_memory=True, persistent_workers=True)
     test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
@@ -72,9 +72,9 @@ def run_segmentation_training(configs, device, logger, data_dir):
     test_dataloader = DataLoader(test_dataset, configs['batch_size'], num_workers=configs['num_workers'], shuffle = False, pin_memory=True, persistent_workers=True)
 
     model = smp.Unet(
-        encoder_name="resnet34",
-        encoder_weights="imagenet",
-        in_channels=3,
+        encoder_name=configs['segmentation_config']['encoder_name'],
+        encoder_weights=configs['segmentation_config']['encoder_weights'],
+        in_channels=configs['segmentation_config']['in_channels'],
         classes=configs['num_classes']
     )
     model.to(device)
@@ -108,13 +108,14 @@ def main():
 
     configs = read_config(args.config_path)
     device = get_device()
+    generate_dirs(configs)
+    seed_everything(configs["seed"])
 
     logger = setup_logger(os.path.join(configs["output_dir"], 'log.txt'))
     logger.info("Starting the training script")
     logger.info(f"Using device: {device}")
 
     data_dir = configs['data_dir']
-    generate_dirs(configs)
 
     if(configs['task_type'] == '0'):
         run_classification_training(configs, device, logger, data_dir)

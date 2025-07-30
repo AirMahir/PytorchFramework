@@ -13,7 +13,7 @@ from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
 from utils.visualize import display_classification_batch, display_segmentation_batch
 from utils.transforms import val_transforms_classification, val_transform_segmentation
-from utils.helpers import read_config, get_device, generate_dirs
+from utils.helpers import read_config, get_device, generate_dirs, seed_everything
 
 import matplotlib.pyplot as plt
 
@@ -49,11 +49,12 @@ def main():
     configs = read_config(args.config_path)
     device = get_device()
 
+    generate_dirs(configs)
+    seed_everything(configs["seed"])
+
     logger = setup_logger(os.path.join(configs["output_dir"], 'log_inference.txt'))
     logger.info("Starting main processing")
     logger.info(f"Using device: {device}")
-
-    generate_dirs(configs)
 
     if(configs['task_type'] == '0'):
 
@@ -62,10 +63,11 @@ def main():
         model = timm.create_model('resnet50d', pretrained=False, num_classes=configs['num_classes'])
         model.to(device)
         logger.info(f"Loading classification model: resnet50d with {configs['num_classes']} classes.")
-
+        if not args.checkpoint_path:
+            raise ValueError("Checkpoint path is required for classification inference.")
         checkpoint = torch.load(args.checkpoint_path, map_location=device)
         # model.load_state_dict(checkpoint)
-        model.load_state_dict(checkpoint['model'].state_dict())  # Using .state_dict() from saved model
+        model.load_state_dict(checkpoint['model'])  # Using .state_dict() from saved model
         model.eval()
         logger.info(f"Model checkpoint loaded from {args.checkpoint_path}")
 
@@ -107,13 +109,12 @@ def main():
         logger.info(f"Loading segmentation model: Unet with resnet34 encoder and {3} classes.")
 
         checkpoint = torch.load(args.checkpoint_path, map_location=device)
-        model.load_state_dict(checkpoint['model'].state_dict())  # Using .state_dict() from saved model
-        # model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint['model'])  
         model.eval()
         logger.info(f"Model checkpoint loaded from {args.checkpoint_path}")
 
         test_data = SegmentationDataset(args.img_dir, val_transform_segmentation, is_inference=True)
-        test_dataloader = DataLoader(test_data, num_workers=configs['num_workers'], shuffle=True, drop_last=True)
+        test_dataloader = DataLoader(test_data, batch_size = configs['batch_size'], num_workers=configs['num_workers'], shuffle=True)
 
         os.makedirs(configs["output_dir"], exist_ok=True)
 
@@ -121,14 +122,14 @@ def main():
 
         logger.info(f"Starting inference on {len(test_data)} images...")
 
-        for _, (images, filenames) in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset", leave=False)):
-            
-            images = images.to(device)
+        for batch_idx, (images, filenames) in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset")):
 
+            print(f"Batch size: {len(images)}")
+            images = images.to(device)
             preds = model(images)
             preds = torch.argmax(preds, dim=1)
 
-            display_segmentation_batch(images, preds, configs)
+            display_segmentation_batch(images, preds, batch_idx, configs, n=len(images))
             logger.info(f"Processed and saved segmentation output for batch including {', '.join(filenames)}")
                     
         logger.info("Segmentation inference completed. Outputs saved to the specified output directory.")

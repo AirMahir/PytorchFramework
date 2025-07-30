@@ -1,0 +1,6 @@
+2025-07-30 11:25:51,111 - __main__ - INFO - Starting main processing
+2025-07-30 11:25:51,111 - __main__ - INFO - Using device: cuda
+2025-07-30 11:25:51,111 - __main__ - INFO - Classification evaluation....
+2025-07-30 11:25:51,335 - __main__ - INFO - Loading classification model: resnet50d with 3 classes.
+2025-07-30 11:25:51,438 - __main__ - INFO - Model checkpoint loaded from C:\Users\e87299\Desktop\Training\Week2-Pytorch\Framework-pytorch\outputs\best_checkpoint.pth
+2025-07-30 11:25:51,439 - __main__ - INFO - Starting inference on 8 images...
