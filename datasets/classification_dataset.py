@@ -1,30 +1,34 @@
 import torch
 import pathlib
-import logging
 from PIL import Image
 import numpy as np
 from typing import Dict, Tuple, List
 from torch.utils.data import DataLoader, Dataset
 from utils.helpers import find_classes
 
-logger = logging.getLogger(__name__)
 
-class ClassificationData(Dataset):
+class ClassificationDataset(Dataset):
 
-    def __init__(self, image_dir:str, transform = None) -> None:
+    def __init__(self, image_dir:str, transform = None, is_inference: bool = False) -> None:
 
-        self.paths = list(pathlib.Path(image_dir).glob("*/*.jpg"))
+        self.image_dir = image_dir
+        if is_inference:
+            self.paths = list(pathlib.Path(image_dir).glob("*.jpg"))
+        else:
+            self.paths = list(pathlib.Path(image_dir).glob("*/*.jpg"))
+            self.classes, self.class_to_idx = find_classes(image_dir)
+
         self.transform = transform
-        self.classes, self.class_to_idx = find_classes(image_dir)
+        self.is_inference = is_inference
 
         print(f"Loaded {len(self.paths)} images from {image_dir}")
 
     def __repr__(self):
-        return f"ClassificationData(num_samples={len(self)}, image_dir={self.image_dir})"
+        return f"ClassificationDataset(num_samples={len(self)}, image_dir={self.image_dir})"
     
     def load_image(self, index: int) -> Image.Image:
         image_path = self.paths[index]
-        return Image.open(image_path) 
+        return Image.open(image_path).convert("RGB") 
     
     def __len__(self) -> int:
         return len(self.paths)
@@ -34,30 +38,14 @@ class ClassificationData(Dataset):
         class_name  = self.paths[index].parent.name 
         class_idx = self.class_to_idx[class_name]
 
-        # print(f"Shape for image : {img.size}")
         if self.transform:
-            transformed = self.transform(image=np.array(img))  # return data, label (X, y)
-            # print(f"Shape for class_idx : {class_idx}")
-            # print(f"Shape for image : {transformed["image"].shape}")
-            return transformed["image"], class_idx 
+            transformed_img = self.transform(image=np.array(img))["image"]
         else:
-            return img, class_idx  # return data, label (X, y)
+            transformed_img = img
 
-
-class ClassificationInferenceDataset(Dataset):
-    def __init__(self, image_dir, transform=None):
-        self.image_dir = image_dir
-        self.paths = list(pathlib.Path(image_dir).glob("*.jpg")) 
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.paths)
-
-    def __getitem__(self, idx):
-        img_path = self.paths[idx]
-        image = Image.open(img_path).convert("RGB")
-
-        if self.transform:
-            image = self.transform(image=np.array(image))["image"]
-
-        return image, str(img_path.name)
+        if self.is_inference:
+            return transformed_img, str(self.paths[index].name)
+        else:
+            class_name  = self.paths[index].parent.name 
+            class_idx = self.class_to_idx[class_name]
+            return transformed_img, class_idx

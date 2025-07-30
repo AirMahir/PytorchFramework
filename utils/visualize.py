@@ -2,12 +2,13 @@ import os
 import torch
 import matplotlib.pyplot as plt
 
-def plot_loss_curves(results):
+def plot_loss_curves(results, configs):
     """
     Plots the training and validation loss over epochs.
 
     Args:
         results (dict): Dictionary with 'train_loss' and 'val_loss' lists.
+        configs (dict): Configuration dictionary containing 'output_dir' and 'task_name'.
     """
     plt.figure(figsize=(10, 5))
     plt.plot(results["train_loss"], label="Train Loss")
@@ -18,27 +19,43 @@ def plot_loss_curves(results):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    
+    # Save the plot instead of showing it
+    os.makedirs(configs["output_dir"], exist_ok=True)
+    plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_loss_curves.png'))
+    plt.close() # Close the plot to free memory
 
 def plot_metric_curves(results, configs):
     """
-    Plots the training and validation metrics (accuracy, IoU, Dice) over epochs for segmentation.
+    Plots the training and validation metrics over epochs, adapting to task type.
 
     Args:
-        results (dict): Dictionary containing keys like 'train_acc', 'val_acc', 'train_iou', etc.
-        configs (dict): Configuration dictionary containing 'output_dir' and 'task_name'.
+        results (dict): Dictionary containing relevant metric lists.
+        configs (dict): Configuration dictionary containing 'output_dir' and 'task_type'.
     """
-    metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice"]
-    titles = {
-        "train_acc": "Train Accuracy", "val_acc": "Val Accuracy",
-        "train_iou": "Train IoU", "val_iou": "Val IoU",
-        "train_dice": "Train Dice", "val_dice": "Val Dice"
-    }
+    if configs['task_type'] == '0':  # Classification
+        metrics = ["train_acc", "val_acc"]
+        titles = {
+            "train_acc": "Train Accuracy", "val_acc": "Val Accuracy"
+        }
+        subplot_rows = 1
+        subplot_cols = 2
+        figsize = (15, 5)  # Adjusted figsize for classification
+    else:  # Segmentation
+        metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice"]
+        titles = {
+            "train_acc": "Train Accuracy", "val_acc": "Val Accuracy",
+            "train_iou": "Train IoU", "val_iou": "Val IoU",
+            "train_dice": "Train Dice", "val_dice": "Val Dice"
+        }
+        subplot_rows = 3
+        subplot_cols = 2
+        figsize = (15, 10)
 
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=figsize)
 
     for i, metric in enumerate(metrics):
-        plt.subplot(3, 2, i+1)
+        plt.subplot(subplot_rows, subplot_cols, i + 1)
         plt.plot(results[metric], label=metric)
         plt.title(titles[metric])
         plt.xlabel("Epochs")
@@ -47,8 +64,8 @@ def plot_metric_curves(results, configs):
         plt.legend()
 
     plt.tight_layout()
-    os.makedirs(os.path.join(configs["output_dir"], '_Segmentation_'), exist_ok=True)
-    plt.savefig(os.path.join(configs["output_dir"], '_Segmentation_', f'{configs["task_name"]}_metric_curves.png'))
+    plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_metric_curves.png'))
+    plt.close() # Close the plot to free memory
 
 def display_segmentation_batch(images, masks, configs, class_map=None, n=4):
     """
@@ -119,33 +136,6 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         save_path = os.path.join(configs["output_dir"], '_Segmentation_', f"epoch_{epoch}_sample_{idx}.png")
         plt.savefig(save_path)
         plt.close()
-
-def plot_metric_curves_classification(results, configs):
-    """
-    Plots classification accuracy for training and validation.
-
-    Args:
-        results (dict): Dictionary containing 'train_acc' and 'val_acc'.
-        configs (dict): Configuration dictionary with 'output_dir' and 'task_name'.
-    """
-    metrics = ["train_acc", "val_acc"]
-    titles = {
-        "train_acc": "Train Accuracy", "val_acc": "Val Accuracy"
-    }
-
-    plt.figure(figsize=(15, 10))
-
-    for i, metric in enumerate(metrics):
-        plt.subplot(1, 2, i+1)
-        plt.plot(results[metric], label=metric)
-        plt.title(titles[metric])
-        plt.xlabel("Epochs")
-        plt.ylabel(metric.split('_')[-1].capitalize())
-        plt.grid(True)
-        plt.legend()
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], f'{configs["task_name"]}_metric_curves.png'))
 
 def display_classification_batch(images, targets, configs, class_map=None, n=4):
     """

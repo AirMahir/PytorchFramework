@@ -1,12 +1,25 @@
 {
-  "task_type" : "0",
-  "task_name" : "Classification",
-  "model_name" : "resnet50d",
-  "data_dir" : "Data/",
-  "output_dir" : "output_classification",
-  "num_classes" : 3,
+  "task_type": "0", 
+  "task_name": "Classification", 
+  "data_dir": "Data/",
+  "output_dir": "outputs",
+  "num_classes": 3,
   "batch_size": 4,
   "num_workers": 4,
-  "learning_rate": 1e-4,
-  "num_epochs": 20
+  "learning_rate": 0.0001,
+  "num_epochs": 20,
+  "classification_config": {
+    "model_name": "resnet50d",
+    "pretrained": false,
+    "criterion": "CrossEntropyLoss",
+    "optimizer": "Adam"
+  },
+  "segmentation_config": {
+    "model_name": "Unet",
+    "encoder_name": "resnet34",
+    "encoder_weights": "imagenet",
+    "in_channels": 3,
+    "criterion": "CrossEntropyLoss",
+    "optimizer": "AdamW"
+  }
 }
