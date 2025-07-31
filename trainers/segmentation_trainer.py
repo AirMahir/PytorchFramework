@@ -88,7 +88,7 @@ class SegmentationTrainer:
 
                 total_loss += loss.item()
 
-                if(epoch % 5 == 0):
+                if(epoch % 2 == 0):
                     display_segmentation_prediction(images, masks, preds, epoch, self.config)
 
                 accuracy.append(calculate_accuracy(preds, masks))
@@ -130,8 +130,8 @@ class SegmentationTrainer:
 
             print(
                 f"Epoch {epoch+1:02d} | "
-                f"Train Loss: {train_loss:.4f} | Acc: {train_acc*100:.2f}% | IoU: {train_iou*100:.2f}% | Dice: {train_dice*100:.2f}% || "
-                f"Val Loss: {val_loss:.4f} | Acc: {val_acc*100:.2f}% | IoU: {val_iou*100:.2f}% | Dice: {val_dice*100:.2f}% ||"
+                f"Train Loss: {train_loss:.4f} | Acc: {train_acc*100:.2f}% | IoU: {train_iou*100:.2f}% | Dice: {train_dice:.2f} || "
+                f"Val Loss: {val_loss:.4f} | Acc: {val_acc*100:.2f}% | IoU: {val_iou*100:.2f}% | Dice: {val_dice:.2f} ||"
                 f" LR: {current_lr:.6f} | train_time: {_train_time:.2f}s | val_time: {_val_time:.2f}s"
             )
 

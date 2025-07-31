@@ -40,5 +40,5 @@ def calculate_dice_coefficient(outputs, targets, num_classes = 3):
     # logger.debug(f"The shape of one-hot encoded vector is : {targets_one_hot.shape}")
     intersection = (preds_one_hot * targets_one_hot).sum(dim=(0, 2, 3))
 
-    dice = (2 * intersection) / (preds_one_hot.sum(dim=(0, 2, 3)) + targets_one_hot.sum(dim=(0, 2, 3)))
+    dice = (2 * intersection + 1e-5) / (preds_one_hot.sum(dim=(0, 2, 3)) + targets_one_hot.sum(dim=(0, 2, 3)) + 1e-5)
     return dice.mean()

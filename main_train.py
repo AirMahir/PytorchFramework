@@ -42,7 +42,7 @@ def run_classification_training(configs, device, logger, checkpoint_path):
     model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', False), num_classes=model_cfg['num_classes'])
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=255)
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_lr_scheduler(optimizer)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
@@ -87,7 +87,7 @@ def run_segmentation_training(configs, device, logger, checkpoint_path=None):
     )
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=255)
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_lr_scheduler(optimizer)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision

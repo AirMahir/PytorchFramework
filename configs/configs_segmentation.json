@@ -22,8 +22,8 @@
   
   "training": {
     "epochs": 20,
-    "batch_size": 16,
-    "num_workers": 16,
+    "batch_size": 8,
+    "num_workers": 8,
     "log_interval": 10,
     "save_interval": 5
   },
@@ -32,8 +32,8 @@
   "scheduler_type": "CosineLRScheduler",
 
   "inference": {
-    "batch_size": 16,
-    "num_workers": 16,
+    "batch_size": 8,
+    "num_workers": 8,
     "output_dir": "inference_results/segmentation"
   }
 } 

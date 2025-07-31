@@ -48,6 +48,6 @@ class SegmentationDataset(Dataset):
                 augmented = self.transform(image = np.array(image), mask = np.array(binary_mask).astype(np.float32))
                 return augmented["image"].float(), augmented["mask"].float() 
             else:
-                return torch.tensor(np.array(image)), torch.tensor(np.array(mask).astype(np.float32))
+                return torch.tensor(np.array(image)), torch.tensor(np.array(mask).astype(np.float64))
 
         

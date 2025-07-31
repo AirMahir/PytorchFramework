@@ -3,8 +3,8 @@ from timm.optim import create_optimizer_v2
 from torch.optim import Adam, AdamW
 
 def get_optimizer(model, optimizer_config):
-    lr = 1e-4
-    weight_decay = 0.01 
+    lr = 1e-5
+    weight_decay = 0.001 
     betas = (0.9, 0.999)
     eps = 1e-8
 
