@@ -6,6 +6,7 @@ import argparse
 import torch.nn as nn
 import segmentation_models_pytorch as smp
 
+from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 from datasets.classification_dataset import ClassificationDataset
@@ -22,16 +23,16 @@ from utils.scheduler_helper import get_lr_scheduler
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 set_pytorch_optimizations()
 
-def run_classification_training(configs, device, logger, checkpoint_path):
+def run_classification_training(configs, device, logger, writer, checkpoint_path=None):
     logger.info("Classification Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
     train_cfg = configs['training']
-    opt_cfg = configs['optimizer']
-    sched_cfg = configs['scheduler']
+    opt_cfg = configs['optimizer_type']
+    sched_cfg = configs['scheduler_type']
 
-    train_data = ClassificationDataset(data_cfg['train_dir'], transform=train_transforms_classification, logger=logger)
-    test_data = ClassificationDataset(data_cfg['val_dir'], transform=val_transforms_classification, logger=logger)
+    train_data = ClassificationDataset(data_cfg['train_dir'], data_cfg["train_csv"], transform=train_transforms_classification, logger=logger)
+    test_data = ClassificationDataset(data_cfg['val_dir'], data_cfg["val_csv"], transform=val_transforms_classification, logger=logger)
 
     train_dataloader = DataLoader(train_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
     test_dataloader = DataLoader(test_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
@@ -42,7 +43,18 @@ def run_classification_training(configs, device, logger, checkpoint_path):
     model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', False), num_classes=model_cfg['num_classes'])
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=255)
+    # for param in model.parameters():
+    #     param.requires_grad = False
+
+    # # Unfreeze the last block — for ConvNeXt, it's typically model.stages[-1]
+    # for param in model.stages[-1].parameters():
+    #     param.requires_grad = True
+
+    # #Unfreeze the classification head
+    # for param in model.get_classifier().parameters():
+    #     param.requires_grad = True
+
+    criterion = nn.CrossEntropyLoss()
     optimizer = get_optimizer(model, opt_cfg)
     scheduler = get_lr_scheduler(optimizer)
     scaler = GradScaler()  # Initialize GradScaler for mixed precision
@@ -59,11 +71,11 @@ def run_classification_training(configs, device, logger, checkpoint_path):
         scaler.load_state_dict(checkpoint['scaler_state_dict'])
         logger.info("Model checkpoint loaded successfully.")
 
-    trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, scaler, device, configs, logger=logger, start_epoch=start_epoch)
+    trainer = ClassificationTrainer(model, train_dataloader, test_dataloader, optimizer, criterion, scheduler, scaler, device, configs, writer, logger=logger, start_epoch=start_epoch)
     results = trainer.train()
     logger.info(results)
 
-def run_segmentation_training(configs, device, logger, checkpoint_path=None):
+def run_segmentation_training(configs, device, logger, writer, checkpoint_path=None):
     logger.info("Segmentation Training")
     data_cfg = configs['data']
     model_cfg = configs['model']
@@ -118,16 +130,18 @@ def main():
     device = get_device()
     generate_dirs(configs)
     seed_everything(configs["seed"])
+    writer = SummaryWriter()
 
     logger = setup_logger(os.path.join(configs["output_dir"], 'log.txt'))
     logger.info("Starting the training script")
     logger.info(f"Using device: {device}")
 
     if(configs['task_type'] == 'classification'):
-        run_classification_training(configs, device, logger, args.checkpoint)
-
+        run_classification_training(configs, device, logger, writer, args.checkpoint)
     else:
-        run_segmentation_training(configs, device, logger, args.checkpoint)
+        run_segmentation_training(configs, device, logger, writer, args.checkpoint)
+        
+    writer.close()
 
 if __name__ == "__main__":
     main()

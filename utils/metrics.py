@@ -29,11 +29,11 @@ def calculate_iou_score(outputs, targets, num_classes = 3, eps=1e-6):
     union = preds_one_hot.sum(dim=(0, 2, 3)) + targets_one_hot.sum(dim=(0, 2, 3)) - intersection
 
     iou = (intersection + eps) / (union + eps)
-    return iou.mean()
+    return iou[1]
 
 def calculate_dice_coefficient(outputs, targets, num_classes = 3):
     preds = torch.argmax(outputs, dim=1) # [B, H, W]
-    targets = targets.squeeze(1)
+    # targets = targets.squeeze(1)
     preds_one_hot = one_hot_encode(preds, num_classes)
     targets_one_hot = one_hot_encode(targets, num_classes)
 
@@ -41,4 +41,4 @@ def calculate_dice_coefficient(outputs, targets, num_classes = 3):
     intersection = (preds_one_hot * targets_one_hot).sum(dim=(0, 2, 3))
 
     dice = (2 * intersection + 1e-5) / (preds_one_hot.sum(dim=(0, 2, 3)) + targets_one_hot.sum(dim=(0, 2, 3)) + 1e-5)
-    return dice.mean()
+    return dice[1]

@@ -2,7 +2,7 @@
   "task_type": "segmentation",
   "task_name": "Image Segmentation",
   "seed": 42,
-  "output_dir": "runs/segmentation",
+  "output_dir": "runs_new/segmentation",
   "checkpoints_dir": "checkpoints/segmentation",
   
   "data": {
@@ -21,7 +21,7 @@
   },
   
   "training": {
-    "epochs": 20,
+    "epochs": 25,
     "batch_size": 8,
     "num_workers": 8,
     "log_interval": 10,

@@ -28,18 +28,6 @@ def generate_dirs(configs:dict) -> None:
 
     os.makedirs(output_dir, exist_ok=True)
 
-def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
-    # 1. Get the class names by scanning the target directory
-    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
-    
-    # 2. Raise an error if class names not found
-    if not classes:
-        raise FileNotFoundError(f"Couldn't find any classes in {directory}.")
-        
-    # 3. Create a dictionary of index labels (computers prefer numerical rather than string labels)
-    class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
-    return classes, class_to_idx
-
 #Decorator to print time for each function execution
 def calculate_time(func):
     def wrapper(*args, **kwargs):
@@ -66,7 +54,10 @@ def set_pytorch_optimizations():
     - Non-deterministic mode for better performance
     """
     import torch
+    from torch.utils.tensorboard import SummaryWriter
+    
     torch.set_float32_matmul_precision('high')
+    torch.autograd.set_detect_anomaly(True)
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.deterministic = False
 

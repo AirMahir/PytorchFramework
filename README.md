@@ -149,12 +149,6 @@ python predict.py --model_path checkpoints/best_segmentation_checkpoint.pth --im
 pip install -r requirements.txt
 ```
 
-## Testing
-
-```bash
-python -m pytest tests/
-```
-
 ## Contributing
 
 1. Fork the repository

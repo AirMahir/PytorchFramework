@@ -62,6 +62,7 @@ def run_classification_inference(configs, device, logger, img_dir, checkpoint_pa
             pred_classes = torch.argmax(preds, dim=1)
 
             display_classification_batch(images, pred_classes, idx, inference_cfg, n=len(images))
+            
             for fname, pred in zip(filenames, preds.cpu().tolist()):
                 all_predictions.append((fname, pred))
                 logger.info(f"Predicted: {fname} => class {torch.argmax(torch.tensor(pred)).item()}")
@@ -87,7 +88,6 @@ def run_segmentation_inference(configs, device, logger, img_dir, checkpoint_path
         classes=model_cfg["classes"]
     )
     model.to(device)
-
     logger.info(f"Loading segmentation model: Unet with {model_cfg['encoder_name']} encoder and {model_cfg['classes']} classes.")
     
     if not checkpoint_path:
@@ -107,15 +107,16 @@ def run_segmentation_inference(configs, device, logger, img_dir, checkpoint_path
 
     logger.info(f"Starting inference on {len(test_data)} images...")
     
-    for batch_idx, (images, filenames) in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset")):
-        
-        images = images.to(device)
-        preds = model(images)
-        preds = torch.argmax(preds, dim=1)
-        
-        display_segmentation_batch(images, preds, batch_idx, inference_cfg, n=len(images))
-        
-        logger.info(f"Processed and saved segmentation output for batch including {', '.join(filenames)}")
+    with torch.no_grad():
+        for batch_idx, (images, filenames) in enumerate(tqdm(test_dataloader, desc="Inferencing the dataset")):
+            
+            images = images.to(device)
+            preds = model(images)
+            preds = torch.argmax(preds, dim=1)
+            
+            display_segmentation_batch(images, preds, batch_idx, inference_cfg, n=len(images))
+            
+            logger.info(f"Processed and saved segmentation output for batch including {', '.join(filenames)}")
     
     logger.info("Segmentation inference completed. Outputs saved to the specified output directory.")
     

@@ -1,6 +1,0 @@
-2025-07-31 10:50:52,058 - root - INFO - Starting the training script
-2025-07-31 10:50:52,058 - root - INFO - Using device: cuda
-2025-07-31 10:50:52,058 - root - INFO - Segmentation Training
-2025-07-31 10:50:52,243 - root - INFO - Loading model checkpoint from .\checkpoints\segmentation\segmentation__10_checkpoint.pth
-2025-07-31 10:50:52,406 - root - INFO - Resuming training from epoch 10
-2025-07-31 10:50:52,419 - root - INFO - Model checkpoint loaded successfully.

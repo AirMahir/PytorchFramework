@@ -3,3 +3,7 @@ numpy
 matplotlib
 segmentation-models-pytorch
 albumentationsx 
+scikit-learn
+pandas
+torch
+tensorboard

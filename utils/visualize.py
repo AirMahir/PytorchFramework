@@ -1,7 +1,31 @@
 import os
 import torch
 import numpy as np
+from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+
+def plot_roc_curve(y_true, y_score, config, epoch=None):
+    
+    if y_score.ndim == 2 and y_score.shape[1] == 2:
+        y_score = y_score[:, 1]
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=1)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.4f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+
+    filename = f"roc_curve_epoch_{epoch}.png" if epoch is not None else "roc_curve.png"
+    path = os.path.join(config["output_dir"], filename)
+    plt.savefig(path)
+    plt.close()
 
 def plot_loss_curves(results, configs):
     """
@@ -40,8 +64,8 @@ def plot_metric_curves(results, configs):
             "train_acc": "Train Accuracy", "val_acc": "Val Accuracy", "lr": "Learning Rate"
         }
         subplot_rows = 1
-        subplot_cols = 2
-        figsize = (15, 5)  # Adjusted figsize for classification
+        subplot_cols = 3
+        figsize = (15, 12)  # Adjusted figsize for classification
     else:  # Segmentation
         metrics = ["train_acc", "val_acc", "train_iou", "val_iou", "train_dice", "val_dice", "lr"]
         titles = {
@@ -87,7 +111,7 @@ def display_segmentation_batch(images, masks, idx, configs, class_map=None, n=4)
 
     for i in range(n):
         img = images[i].permute(1, 2, 0).numpy()
-        image = img - img.min()/ (img.max() - img.min())  # Normalize image to [0, 1]
+        image = (img - img.min()) / (img.max() - img.min() + 1e-5)
         mask = masks[i].numpy()
 
         axs[i, 0].imshow(image)
@@ -126,8 +150,7 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
     for idx in range(images.shape[0]):
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
-        image = images[idx] - images[idx].min()/ (images[idx].max() - images[idx].min())  # Normalize image to [0, 1]
-
+        image = (images[idx] - images[idx].min()) / (images[idx].max() - images[idx].min() + 1e-5)
         axs[0].imshow(image)
         axs[0].set_title("Image")
         axs[0].axis("off")
@@ -162,15 +185,16 @@ def display_classification_batch(images, targets, idx, configs, class_map=None, 
     fig, axs = plt.subplots(n, 1, figsize=(6, 3 * n))
 
     for i in range(n):
-        img = images[i].permute(1, 2, 0).numpy().astype("uint8")
+        img = images[i].permute(1, 2, 0).numpy()
+        image = (img  - img .min()) / (img .max() - img .min() + 1e-5)
         target = targets[i].numpy()
 
-        axs[i].imshow(img)
+        axs[i].imshow(image)
         axs[i].set_title(target)
         axs[i].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"], f'batch_{idx}_images.png'))
+    plt.savefig(os.path.join(configs["output_dir"],f'dataset_sample_batch_{idx}_images.png'))
     plt.close()
 
 def display_classification_prediction(images, targets, preds, epoch, configs, class_map=None):
@@ -189,14 +213,15 @@ def display_classification_prediction(images, targets, preds, epoch, configs, cl
     if preds.ndim == 2:  # logits/scores
         preds = torch.argmax(preds, dim=1)
 
-    images = images.permute(0, 2, 3, 1).numpy().astype("uint8")  # (B, H, W, C)
+    images = images.permute(0, 2, 3, 1).numpy()  # (B, H, W, C)
     targets = targets.numpy()
     preds = preds.numpy()
 
     for idx in range(images.shape[0]):
         fig, axs = plt.subplots(1, 1, figsize=(15, 5))
 
-        axs.imshow(images[idx])
+        image = (images[idx]  - images[idx].min()) / (images[idx].max() - images[idx].min() + 1e-5)
+        axs.imshow(image)
         axs.set_title(f"Target: {targets[idx]}, Pred: {preds[idx]}")
         axs.axis("off")
 

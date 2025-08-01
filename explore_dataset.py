@@ -10,7 +10,7 @@ set_pytorch_optimizations()
 
 def main():
     # Load configuration
-    task_type = "segmentation"  # or "classification"
+    task_type = "classification"  # or "classification"
     
     if task_type == "segmentation":
         config_path = "configs/configs_segmentation.json"
@@ -28,7 +28,7 @@ def main():
     if task_type == "segmentation":
         train_dataset = SegmentationDataset(
             data_dir=config["data"]["train_dir"],
-            transform=None
+            transform=train_transform_segmentation
         )
         
         train_loader = DataLoader(
@@ -42,13 +42,15 @@ def main():
         # Explore the dataset
         print("=== Segmentation Dataset Exploration ===")
         for batch_idx, (images, masks) in enumerate(train_loader):
+            print(images.shape, masks.shape)
             if batch_idx >= 3:  # Visualize 3 batches
                 break
             display_segmentation_batch(images, masks, batch_idx, config, n=4)
         
     else:  # classification
         train_dataset = ClassificationDataset(
-            data_dir=config["data"]["train_dir"],
+            image_dir=config["data"]["train_dir"],
+            csv_path=config["data"]["train_csv"],
             transform=train_transforms_classification
         )
         

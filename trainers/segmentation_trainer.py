@@ -75,9 +75,6 @@ class SegmentationTrainer:
         with torch.no_grad():
             for i, (images, masks) in enumerate(tqdm(self.val_loader, desc=f"Epoch {epoch+1} Val", leave=False)):
 
-                # if i == 0:
-                #     display_segmentation_batch(images, masks, i, self.config)
-
                 images, masks = images.to(self.device), masks.to(self.device)
                 masks = masks.long()
                 
@@ -128,11 +125,11 @@ class SegmentationTrainer:
 
             current_lr = self.optimizer.param_groups[0]['lr']
 
-            print(
+            self.logger.info(
                 f"Epoch {epoch+1:02d} | "
                 f"Train Loss: {train_loss:.4f} | Acc: {train_acc*100:.2f}% | IoU: {train_iou*100:.2f}% | Dice: {train_dice:.2f} || "
                 f"Val Loss: {val_loss:.4f} | Acc: {val_acc*100:.2f}% | IoU: {val_iou*100:.2f}% | Dice: {val_dice:.2f} ||"
-                f" LR: {current_lr:.6f} | train_time: {_train_time:.2f}s | val_time: {_val_time:.2f}s"
+                f"LR: {current_lr:.6f} | train_time: {_train_time:.2f}s | val_time: {_val_time:.2f}s"
             )
 
             if(val_loss < best_loss):
@@ -147,9 +144,10 @@ class SegmentationTrainer:
                     'lr_scheduler_state_dict' : self.scheduler.state_dict(),
                     'scaler_state_dict': self.scaler.state_dict() 
                 } 
+
                 torch.save(checkpoint, model_path)
 
-            if(epoch % 5 == 0):
+            if(epoch % 2 == 0):
                 model_path = os.path.join(self.config["checkpoints_dir"], f"{self.config["task_type"]}__{epoch}_checkpoint.pth")
                 checkpoint = {
                     'epoch' : epoch,

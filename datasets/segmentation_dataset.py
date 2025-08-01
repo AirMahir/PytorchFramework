@@ -1,4 +1,5 @@
 import os
+import cv2
 import torch
 import numpy as np
 from PIL import Image
@@ -29,7 +30,9 @@ class SegmentationDataset(Dataset):
     def __getitem__(self, index: int):
         img_name = self.image_lists[index]
         img_path = os.path.join(self.image_dir, img_name)
-        image = Image.open(img_path)
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # image = Image.open(img_path)
 
         if self.is_inference:
             if self.transform:
@@ -39,15 +42,14 @@ class SegmentationDataset(Dataset):
                 return image, img_name
         else:
             mask_path = os.path.join(self.mask_dir, img_name)
-            mask = Image.open(mask_path).convert("L")
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
-            mask_np = np.array(mask)
-            binary_mask = (mask_np > 153).astype(np.float32)
+            mask = (mask >= 153).astype(np.uint8)
 
             if self.transform:
-                augmented = self.transform(image = np.array(image), mask = np.array(binary_mask).astype(np.float32))
+                augmented = self.transform(image = np.array(image), mask = np.array(mask))
                 return augmented["image"].float(), augmented["mask"].float() 
             else:
-                return torch.tensor(np.array(image)), torch.tensor(np.array(mask).astype(np.float64))
+                return torch.tensor(np.array(image)), torch.tensor(np.array(mask))
 
         
