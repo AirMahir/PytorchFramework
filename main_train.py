@@ -130,7 +130,7 @@ def main():
     device = get_device()
     generate_dirs(configs)
     seed_everything(configs["seed"])
-    writer = SummaryWriter()
+    writer = SummaryWriter(log_dir = configs["tensorboard_dir"])
 
     logger = setup_logger(os.path.join(configs["output_dir"], 'log.txt'))
     logger.info("Starting the training script")

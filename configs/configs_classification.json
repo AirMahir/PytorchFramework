@@ -4,6 +4,7 @@
   "seed": 42,
   "output_dir": "runs_new/classification",
   "checkpoints_dir": "checkpoints/classification",
+  "tensorboard_dir":"runs_new",
   
   "data": {
     "train_dir": "Data/classificationData/train",

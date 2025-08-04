@@ -18,7 +18,7 @@ class ClassificationDataset(Dataset):
             self.data = pd.read_csv(csv_path)
             assert 'Image-Name' in self.data.columns and 'Label' in self.data.columns
             assert self.data['Label'].isna().sum() == 0
-            self.paths = self.data['Image-Name'].tolist()[:1000]
+            self.paths = self.data['Image-Name'].tolist()
 
             if self.logger:
                 self.logger.info(f"Loaded {len(self.paths)} labeled images from {image_dir}")
@@ -52,3 +52,8 @@ class ClassificationDataset(Dataset):
         else:
             # print(image.shape, label)
             return image, torch.tensor(label, dtype=torch.long)
+
+
+
+# Study architectures
+# 

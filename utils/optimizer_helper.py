@@ -3,7 +3,7 @@ from timm.optim import create_optimizer_v2
 from torch.optim import Adam, AdamW
 
 def get_optimizer(model, optimizer_config):
-    lr = 1e-2
+    lr = 1e-2  # for segmentation : 3e-4
     weight_decay = 1e-3
     betas = (0.9, 0.999)
     eps = 1e-8
