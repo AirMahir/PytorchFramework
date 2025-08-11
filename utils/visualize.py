@@ -3,6 +3,10 @@ import torch
 import numpy as np
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from sklearn.metrics import confusion_matrix
+from collections import Counter
+import seaborn as sn
 
 def plot_roc_curve(y_true, y_score, config, epoch=None):
     
@@ -168,7 +172,7 @@ def display_segmentation_prediction(images, masks, preds, epoch, configs, class_
         plt.savefig(save_path)
         plt.close()
 
-def display_classification_batch(images, targets, idx, configs, class_map=None, n=4):
+def display_classification_batch(images, targets, idx, output_dir, class_map=None, n=4 ):
     """
     Saves a batch of input classification images with their ground truth labels.
 
@@ -180,21 +184,21 @@ def display_classification_batch(images, targets, idx, configs, class_map=None, 
         n (int): Number of images to display.
     """
     images = images[:n].cpu()
-    targets = targets[:n].cpu()
+    targets = targets[:n]
 
-    fig, axs = plt.subplots(n, 1, figsize=(6, 3 * n))
+    fig, axs = plt.subplots(1, n, figsize=(3 * n, 3))
 
     for i in range(n):
         img = images[i].permute(1, 2, 0).numpy()
         image = (img  - img .min()) / (img .max() - img .min() + 1e-5)
-        target = targets[i].numpy()
+        target = targets[i]
 
         axs[i].imshow(image)
         axs[i].set_title(target)
         axs[i].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(configs["output_dir"],f'dataset_sample_batch_{idx}_images.png'))
+    plt.savefig(os.path.join(output_dir, f'dataset_sample_batch_{idx}_images.png'))
     plt.close()
 
 def display_classification_prediction(images, targets, preds, epoch, configs, class_map=None):
@@ -229,6 +233,102 @@ def display_classification_prediction(images, targets, preds, epoch, configs, cl
         save_path = os.path.join(configs["output_dir"], f"epoch_{epoch}_sample_{idx}.png")
         plt.savefig(save_path)
         plt.close()
+
+def plot_tsne(features: np.ndarray, labels: np.ndarray, config, epoch = 0): 
+    
+    print("Performing t-SNE on feature embeddings...") 
+    # 1. Apply t-SNE to reduce dimensionality
+    # n_components=2 for a 2D plot
+    # perplexity is an important parameter; you might need to tune it (e.g., 5, 30, 50)
+    # n_iter is the number of iterations for the optimization
+    tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+    tsne_results = tsne.fit_transform(features)
+    # 2. Create the plot
+    fig, ax = plt.subplots(figsize=(10, 8))
+    # Find unique labels and assign a color to each
+    unique_labels = np.unique(labels)
+    # A colormap is used to get a distinct color for each class
+    colors = plt.cm.get_cmap('tab10', len(unique_labels))
+    
+    for i, label in enumerate(unique_labels):
+        # Find the indices corresponding to the current label
+        indices = labels == label    
+        # Use plt.scatter to plot individual points for each class.
+        ax.scatter(tsne_results[indices, 0], tsne_results[indices, 1],
+                   label=f'Class {label}', color=colors(i), s=10)
+
+    ax.set_title(f't-SNE of Feature Embeddings - Epoch')
+    ax.set_xlabel('t-SNE Dimension 1')
+    ax.set_ylabel('t-SNE Dimension 2')
+    ax.legend(loc='best', fontsize='small')
+    ax.grid(True)
+    
+    save_path = os.path.join(config["output_dir"], f"tsne_{epoch}.png")
+    plt.savefig(save_path)
+    plt.close()
+
+def display_confusion_matrix(targets, preds, class_names, epoch, configs):
+    """
+    Plots a row-normalized confusion matrix for better interpretability.
+    Rows = Ground Truth, Columns = Predictions
+    """
+    cm = confusion_matrix(targets, preds)
+    cm_normalized = cm.astype(np.float32) / cm.sum(axis=1, keepdims=True)  # Normalize by GT count
+
+    # Handle division by zero in case a class has 0 samples
+    cm_normalized = np.nan_to_num(cm_normalized)
+
+    plt.figure(figsize=(15, 12))
+    sn.heatmap(cm_normalized, annot=True, fmt=".2f", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+
+    # Explicit axis labels
+    plt.xlabel("Predicted Label", fontsize=12)
+    plt.ylabel("Ground Truth Label", fontsize=12)
+
+    plt.title(f"Confusion Matrix", fontsize=14)
+
+    save_path = os.path.join(configs["output_dir"], f"inference_confusion_matrix.png")
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_class_distribution(labels, class_names, save_dir, filename="class_distribution.png"):
+    """
+    Plots and saves a histogram of the number of samples per class.
+
+    Args:
+        labels (list): A list of integer labels for the dataset.
+        class_names (list): A list of string class names.
+        save_dir (str): The directory to save the plot.
+        filename (str): The name of the saved file.
+    """
+    # Count the number of samples for each class
+    label_counts = Counter(labels)
+    sorted_labels = sorted(label_counts.keys())
+    counts = [label_counts[label] for label in sorted_labels]
+    
+    # Map integer labels to class names for the plot
+    sorted_class_names = [class_names[label] for label in sorted_labels]
+    
+    # Create the plot
+    plt.figure(figsize=(12, 8))
+    sn.barplot(x=sorted_class_names, y=counts, palette="viridis")
+    
+    # Add counts to the top of the bars
+    for i, count in enumerate(counts):
+        plt.text(i, count, str(count), ha='center', va='bottom', fontsize=12)
+
+    plt.title("Number of Samples per Class", fontsize=16)
+    plt.xlabel("Class", fontsize=14)
+    plt.ylabel("Number of Samples", fontsize=14)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    
+    # Ensure the save directory exists and save the plot
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, filename)
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Class distribution plot saved to: {save_path}")
 
 def explore_segmentation_dataset(dataloader, configs, num_batches=3, samples_per_batch=4, class_map=None):
     """

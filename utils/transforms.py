@@ -5,7 +5,7 @@ from albumentations.pytorch import ToTensorV2
 
 warnings.filterwarnings("ignore", category=UserWarning, module='albumentations')
 
-TARGET_SIZE_CLASSIFICATION = (384, 384) 
+TARGET_SIZE_CLASSIFICATION = (224, 224) 
 
 # Training transforms for Classification
 train_transforms_classification = A.Compose([
@@ -43,7 +43,7 @@ val_transforms_classification = A.Compose([
     ToTensorV2()
 ])
 
-TARGET_SIZE_SEGMENTATION = (384, 384) 
+TARGET_SIZE_SEGMENTATION = (224, 224) 
 
 # Training transforms for Segmentation
 train_transform_segmentation = A.Compose([

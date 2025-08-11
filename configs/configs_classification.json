@@ -2,9 +2,9 @@
   "task_type": "classification",
   "task_name": "Image Classification",
   "seed": 42,
-  "output_dir": "runs_new/classification",
+  "output_dir": "runs/classification",
   "checkpoints_dir": "checkpoints/classification",
-  "tensorboard_dir":"runs_new",
+  "tensorboard_dir":"runs",
   
   "data": {
     "train_dir": "Data/classificationData/train",
@@ -12,28 +12,37 @@
     "val_dir": "Data/classificationData/val",
     "val_csv": "Data/classificationData/val/val.csv",
     "num_classes": 2,
-    "image_size": 384
+    "image_size": 224
   },
   
   "model": {
-    "name": "convnextv2_nano",
-    "pretrained": false,
+    "name": "vit_tiny_patch16_224.augreg_in21k_ft_in1k",
+    "img_size" : 224, 
+    "patch_size" : 16,
+    "embed_dims" : 192,
+    "pretrained": true,
     "num_classes": 2
   },
   
   "training": {
-    "epochs": 5,
+    "epochs": 20,
     "batch_size": 16,
     "num_workers": 8,
     "log_interval": 10,
     "save_interval": 5
   },
-  
-  "optimizer_type": "AdamW",
-  "scheduler_type": "CosineLRScheduler",
 
+  "optimizer_type" : {
+    "name" : "AdamW",
+    "lr" : 5e-4,
+    "decay" : 1e-5,
+    "scheduler_type" : "CosineLRScheduler"
+
+  },
+  
   "inference": {
-    "batch_size": 8,
+    "img_dir" : "test/",
+    "batch_size": 32,
     "num_workers": 8,
     "output_dir": "inference_results/classification"
   }

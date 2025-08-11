@@ -9,6 +9,7 @@ import segmentation_models_pytorch as smp
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
+from models.model import ViT
 from datasets.classification_dataset import ClassificationDataset
 from datasets.segmentation_dataset import SegmentationDataset
 from utils.helpers import read_config, get_device, generate_dirs, seed_everything, set_pytorch_optimizations
@@ -29,7 +30,6 @@ def run_classification_training(configs, device, logger, writer, checkpoint_path
     model_cfg = configs['model']
     train_cfg = configs['training']
     opt_cfg = configs['optimizer_type']
-    sched_cfg = configs['scheduler_type']
 
     train_data = ClassificationDataset(data_cfg['train_dir'], data_cfg["train_csv"], transform=train_transforms_classification, logger=logger)
     test_data = ClassificationDataset(data_cfg['val_dir'], data_cfg["val_csv"], transform=val_transforms_classification, logger=logger)
@@ -37,11 +37,20 @@ def run_classification_training(configs, device, logger, writer, checkpoint_path
     train_dataloader = DataLoader(train_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=True, drop_last=True, pin_memory=True, persistent_workers=True)
     test_dataloader = DataLoader(test_data, batch_size=train_cfg['batch_size'], num_workers=train_cfg['num_workers'], shuffle=False, pin_memory=True, persistent_workers=True)
     
+    import pprint
+    pretty_configs = pprint.pformat(configs)
+    logger.info(f"Configuration settings:\n{pretty_configs}")
+
     logger.info(f"Loaded {len(train_data)} training samples and {len(test_data)} validation samples.")
     logger.info(f"Using {len(train_dataloader)} training batches and {len(test_dataloader)} validation batches.")
 
-    model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', False), num_classes=model_cfg['num_classes'])
+    pretrained_model = timm.create_model(model_cfg['name'], pretrained=model_cfg.get('pretrained', True), num_classes = model_cfg["num_classes"])
+    timm_state_dict = pretrained_model.state_dict() 
+    # model.to(device)
+    model = ViT(model_cfg)
     model.to(device)
+    logger.info("Loading state_dict into custom model...")
+    model.load_state_dict(timm_state_dict, strict=True)
 
     # for param in model.parameters():
     #     param.requires_grad = False
@@ -81,7 +90,6 @@ def run_segmentation_training(configs, device, logger, writer, checkpoint_path=N
     model_cfg = configs['model']
     train_cfg = configs['training']
     opt_cfg = configs['optimizer_type']
-    sched_cfg = configs['scheduler_type']
 
     train_dataset = SegmentationDataset(data_cfg['train_dir'], transform=train_transform_segmentation)
     test_dataset = SegmentationDataset(data_cfg['val_dir'], transform=val_transform_segmentation)

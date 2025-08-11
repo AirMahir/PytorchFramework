@@ -1,10 +1,12 @@
 import os
+import sys
 import torch
 import logging
 import numpy as np
 import torch.nn as nn
 from tqdm.auto import tqdm
 from torch.amp import autocast
+from torcheval.metrics import MulticlassF1Score
 from sklearn.metrics import roc_auc_score
 from utils.visualize import plot_roc_curve, display_classification_prediction, plot_loss_curves, plot_metric_curves
 from utils.helpers import set_pytorch_optimizations, calculate_time
@@ -39,23 +41,53 @@ class ClassificationTrainer(nn.Module):
 
         train_loss = 0
         train_correct_predictions = 0
+        all_probs_list = []
+        all_targets_list = []
+        accum_iter = 4
+        self.optimizer.zero_grad()
 
-        for batch_idx, (images, targets) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train")):
+        f1_metric = MulticlassF1Score(num_classes=self.config["data"]["num_classes"], average=None).to(self.device)
+
+        for batch_idx, (images, targets) in enumerate(tqdm(self.train_loader, desc=f"Epoch {epoch+1} Train", file=sys.stderr)):
 
             images, targets = images.to(self.device), targets.to(self.device).long()
 
-            self.optimizer.zero_grad()
+            # self.optimizer.zero_grad()
+        
             # Autocast for automatic mixed precision
-            with autocast(device_type=self.device.type):
+            with torch.amp.autocast('cuda', enabled=True):
                 targets_pred = self.model(images)
                 loss = self.criterion(targets_pred, targets)
-                train_loss += loss.item()
+                loss = loss / accum_iter
+            
             self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-                
+            if (batch_idx + 1) % accum_iter == 0 or (batch_idx + 1) == len(self.train_loader):
+                self.scaler.unscale_(self.optimizer)
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                self.optimizer.zero_grad()
+
+            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            # self.scaler.step(self.optimizer)
+            # self.scaler.update()
+            probs = torch.softmax(targets_pred, dim=1)
+            train_loss += loss.item() * accum_iter 
             target_pred_class = torch.argmax(targets_pred, dim = 1)
             train_correct_predictions += (target_pred_class == targets).sum().item()
+            all_probs_list.append(probs.cpu())
+            all_targets_list.append(targets.cpu())
+
+        all_probs = torch.cat(all_probs_list, dim=0)
+        all_targets = torch.cat(all_targets_list, dim=0)
+
+        f1_metric.update(all_probs.to(self.device), all_targets.to(self.device))
+        per_class_f1 = f1_metric.compute()
+        macro_f1 = per_class_f1.mean().item()
+        
+        for i, score in enumerate(per_class_f1):
+            self.writer.add_scalar(f"F1_train/Class_{i}", score.item(), epoch)
+        self.writer.add_scalar("F1_train/Macro_F1", macro_f1, epoch)
 
         avg_train_loss = train_loss / len(self.train_loader)
         avg_train_acc = train_correct_predictions / len(self.train_loader.dataset)
@@ -86,7 +118,7 @@ class ClassificationTrainer(nn.Module):
                 all_probs.append(probs.detach().cpu().numpy())
                 all_targets.append(targets.detach().cpu().numpy())
 
-                if epoch % 5 == 0:
+                if epoch % self.config["training"]["log_interval"] == 0:
                     display_classification_prediction(images, targets, test_preds, epoch, self.config)
 
                 test_pred_labels = torch.argmax(test_preds, dim=1)
@@ -100,7 +132,7 @@ class ClassificationTrainer(nn.Module):
 
         auc_score = roc_auc_score(all_targets, all_probs[:, 1])
 
-        if epoch % 5 == 0 or epoch == self.config["training"]["epochs"] - 1:
+        if epoch % self.config["training"]["save_interval"] == 0 or epoch == self.config["training"]["epochs"] - 1:
             plot_roc_curve(all_targets, all_probs[:, 1], self.config, epoch)
 
         return avg_val_loss, avg_val_acc, auc_score
@@ -160,7 +192,7 @@ class ClassificationTrainer(nn.Module):
                 torch.save(checkpoint, model_path)
                 self.logger.info(f"Best model saved to {model_path}")
 
-            if(epoch % 2 == 0):
+            if(epoch % 5 == 0):
                 model_path = os.path.join(self.config["checkpoints_dir"], f"{self.config["task_type"]}__{epoch}_checkpoint.pth")
                 checkpoint = {
                     'epoch' : epoch,
